@@ -1,88 +1,115 @@
-// src/services/api.ts
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://questiai-43b71abdd48b.herokuapp.com';
 
-class QuestifyAPI {
-    private token: string | null = null;
-
-    constructor() {
-        this.token = localStorage.getItem('access_token');
+class API {
+  static getHeaders(isFormData = false): HeadersInit {
+    const token = localStorage.getItem('token');
+    const headers: Record<string, string> = {};
+    
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
     }
-
-    private async request(endpoint: string, options: RequestInit = {}) {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            ...options.headers as Record<string, string>,
-        };
-
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
-
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-        const data = await response.json();
-
-        if (!response.ok) throw new Error(data.message || 'API request failed');
-        return data;
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
+    
+    return headers;
+  }
 
-    // Authentication
-    async login(email: string, password: string) {
-        const data = await this.request('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        });
-        if (data.data?.access_token) {
-            this.token = data.data.access_token;
-            localStorage.setItem('access_token', this.token);
-        }
-        return data;
+  static async handleResponse(response: Response) {
+    if (!response.ok) {
+      let errorMessage = 'API Error';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch (e) {
+        errorMessage = response.statusText;
+      }
+      throw new Error(errorMessage);
     }
-
-    async register(full_name: string, email: string, password: string) {
-        return this.request('/api/auth/register', {
-            method: 'POST',
-            body: JSON.stringify({ full_name, email, password }),
-        });
+    
+    if (response.status === 204) return null;
+    
+    try {
+      const data = await response.json();
+      return data;
+    } catch (e) {
+      return response;
     }
+  }
 
-    // Materials
-    async uploadMaterial(file: File) {
-        const formData = new FormData();
-        formData.append('file', file);
+  static async login(email: string, password: string) {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    return this.handleResponse(response);
+  }
 
-        const response = await fetch(`${API_BASE_URL}/api/material/upload`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${this.token}` },
-            body: formData,
-        });
-        return response.json();
-    }
+  static async register(full_name: string, email: string, password: string) {
+    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name, email, password }),
+    });
+    return this.handleResponse(response);
+  }
 
-    async getMaterials() {
-        return this.request('/api/material/list');
-    }
+  static async getUserProfile() {
+    const response = await fetch(`${API_BASE_URL}/api/auth/user/profile`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
 
-    // AI Features
-    async generateExam(material_id: string, num_questions: number = 10) {
-        return this.request('/api/ai/generate-exam', {
-            method: 'POST',
-            body: JSON.stringify({ material_id, num_questions }),
-        });
-    }
+  static async uploadMaterial(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
 
-    async chat(message: string, material_id?: string) {
-        return this.request('/api/ai/chat', {
-            method: 'POST',
-            body: JSON.stringify({ message, material_id }),
-        });
-    }
+    const response = await fetch(`${API_BASE_URL}/api/material/upload`, {
+      method: 'POST',
+      headers: this.getHeaders(true),
+      body: formData,
+    });
+    return this.handleResponse(response);
+  }
 
-    async getConceptMap(material_id: string) {
-        return this.request('/api/ai/concept-map', {
-            method: 'POST',
-            body: JSON.stringify({ material_id }),
-        });
-    }
+  static async getMaterials() {
+    const response = await fetch(`${API_BASE_URL}/api/material/list`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async chat(message: string, materialId?: string) {
+    const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ message, materialId }),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async generateExam(materialId: string, numQuestions: number) {
+    const response = await fetch(`${API_BASE_URL}/api/ai/generate-exam`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ materialId, numQuestions }),
+    });
+    return this.handleResponse(response);
+  }
+
+  static async getConceptMap(materialId: string) {
+    const response = await fetch(`${API_BASE_URL}/api/ai/concept-map`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ materialId }),
+    });
+    return this.handleResponse(response);
+  }
 }
 
-export const api = new QuestifyAPI();
+export default API;
