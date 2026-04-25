@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Brain,
   Eye,
@@ -28,6 +29,7 @@ const Auth = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { login, register } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -105,20 +107,56 @@ const Auth = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setErrors({});
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      if (isSignUp) {
+        const { error } = await register(email, password, name);
 
-    setIsLoading(false);
+        if (!error) {
+          toast({
+            title: "Account created",
+            description: "Your learning journey begins now.",
+          });
+          navigate("/dashboard");
+        } else {
+          const errMsg = error.message || "Registration failed";
+          setErrors({ form: errMsg });
+          toast({
+            title: "Registration failed",
+            description: errMsg,
+            variant: "destructive",
+          });
+        }
+      } else {
+        const { error } = await login(email, password);
 
-    toast({
-      title: isSignUp ? "Account created" : "Welcome back",
-      description: isSignUp
-        ? "Your learning journey begins now."
-        : "Let's continue where you left off.",
-    });
-
-    navigate("/dashboard");
+        if (!error) {
+          toast({
+            title: "Welcome back",
+            description: "Let's continue where you left off.",
+          });
+          navigate("/dashboard");
+        } else {
+          const errMsg = error.message || "Login failed";
+          setErrors({ form: errMsg });
+          toast({
+            title: "Login failed",
+            description: errMsg,
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error: any) {
+      setErrors({ form: error.message });
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const toggleMode = () => {
