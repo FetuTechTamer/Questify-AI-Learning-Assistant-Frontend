@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "../services/api";
+import API from "../services/api";
 
 import {
   Brain,
@@ -112,7 +112,7 @@ const Auth = () => {
     try {
       if (isSignUp) {
         // Sign Up - API Call
-        const response = await api.register(name, email, password);
+        const response = await API.register(name, email, password);
 
         // Handle different response formats
         if (response.success === true || response.message?.includes("OTP")) {
@@ -139,7 +139,7 @@ const Auth = () => {
         }
       } else {
         // Sign In - API Call
-        const response = await api.login(email, password);
+        const response = await API.login(email, password);
 
         // Handle login response
         if (response.data?.access_token || response.access_token) {
