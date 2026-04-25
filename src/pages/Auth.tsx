@@ -74,7 +74,7 @@ const Auth = () => {
           delete newErrors.confirmPassword;
         }
         break;
-      case "name":
+      case "full_name":
         if (isSignUp && !name.trim()) {
           newErrors.name = "Name is required";
         } else {
@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   const validateForm = () => {
-    const fields = isSignUp ? ["name", "email", "password", "confirmPassword"] : ["email", "password"];
+    const fields = isSignUp ? ["full_name", "email", "password", "confirmPassword"] : ["email", "password"];
     let isValid = true;
 
     fields.forEach(field => {
@@ -332,11 +332,11 @@ const Auth = () => {
               {/* Name Field (Sign Up Only) */}
               {isSignUp && (
                 <div className="space-y-2 animate-slide-down">
-                  <Label htmlFor="name" className="text-sm font-medium">
+                  <Label htmlFor="full_name" className="text-sm font-medium">
                     Full name
                   </Label>
                   <Input
-                    id="name"
+                    id="full_name"
                     type="text"
                     placeholder="Enter your name"
                     value={name}
