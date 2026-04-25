@@ -64,6 +64,18 @@ class API {
     return this.handleResponse(response);
   }
 
+  static async logout() {
+    localStorage.removeItem('token');
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+      });
+    } catch (e) {
+      // Ignore if no backend logout exists
+    }
+  }
+
   static async uploadMaterial(file: File) {
     const formData = new FormData();
     formData.append('file', file);

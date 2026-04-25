@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    localStorage.removeItem('token');
+    await API.logout();
     setUser(null);
     setSession(null);
     setIsAdmin(false);
