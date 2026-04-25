@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext";
+import { api } from "../services/api";
+
 import {
   Brain,
   Eye,
@@ -29,7 +30,6 @@ const Auth = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { login, register } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -111,47 +111,61 @@ const Auth = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await register(email, password, name);
+        // Sign Up - API Call
+        const response = await api.register(name, email, password);
 
-        if (!error) {
+        // Handle different response formats
+        if (response.success === true || response.message?.includes("OTP")) {
+          toast({
+            title: "Verification needed",
+            description: response.message || "Please check your email for OTP verification.",
+          });
+          // Navigate to verification page or dashboard
+          navigate("/dashboard");
+        } else if (response.data?.access_token) {
+          // If auto-login works
           toast({
             title: "Account created",
             description: "Your learning journey begins now.",
           });
           navigate("/dashboard");
         } else {
-          const errMsg = error.message || "Registration failed";
-          setErrors({ form: errMsg });
+          setErrors({ form: response.message || "Registration failed" });
           toast({
             title: "Registration failed",
-            description: errMsg,
+            description: response.message || "Something went wrong",
             variant: "destructive",
           });
         }
       } else {
-        const { error } = await login(email, password);
+        // Sign In - API Call
+        const response = await api.login(email, password);
 
-        if (!error) {
+        // Handle login response
+        if (response.data?.access_token || response.access_token) {
+          const token = response.data?.access_token || response.access_token;
+          localStorage.setItem("access_token", token);
+
           toast({
             title: "Welcome back",
             description: "Let's continue where you left off.",
           });
           navigate("/dashboard");
         } else {
-          const errMsg = error.message || "Login failed";
-          setErrors({ form: errMsg });
+          setErrors({ form: response.message || "Invalid email or password" });
           toast({
             title: "Login failed",
-            description: errMsg,
+            description: response.message || "Invalid credentials",
             variant: "destructive",
           });
         }
       }
     } catch (error: any) {
-      setErrors({ form: error.message });
+      console.error("Auth error:", error);
+      setErrors({ form: error.message || "Network error. Please try again." });
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to connect to server",
         variant: "destructive",
       });
     } finally {
@@ -165,6 +179,8 @@ const Auth = () => {
     setTouched({});
     setPassword("");
     setConfirmPassword("");
+    setEmail("");
+    setName("");
   };
 
   const getInputState = (field: string) => {
@@ -438,6 +454,13 @@ const Auth = () => {
                   >
                     Forgot password?
                   </button>
+                </div>
+              )}
+
+              {/* Error Message */}
+              {errors.form && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center">
+                  {errors.form}
                 </div>
               )}
 
