@@ -74,7 +74,7 @@ const Auth = () => {
           delete newErrors.confirmPassword;
         }
         break;
-      case "full_name":
+      case "name":
         if (isSignUp && !name.trim()) {
           newErrors.name = "Name is required";
         } else {
@@ -88,7 +88,7 @@ const Auth = () => {
   };
 
   const validateForm = () => {
-    const fields = isSignUp ? ["full_name", "email", "password", "confirmPassword"] : ["email", "password"];
+    const fields = isSignUp ? ["name", "email", "password", "confirmPassword"] : ["email", "password"];
     let isValid = true;
 
     fields.forEach(field => {
@@ -99,6 +99,15 @@ const Auth = () => {
     });
 
     return isValid;
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setName("");
+    setErrors({});
+    setTouched({});
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,16 +123,17 @@ const Auth = () => {
         // Sign Up - API Call
         const response = await API.register(name, email, password);
 
-        // Handle different response formats
-        if (response.success === true || response.message?.includes("OTP")) {
+        if (response.success === true) {
           toast({
-            title: "Verification needed",
-            description: response.message || "Please check your email for OTP verification.",
+            title: "Success!",
+            description: response.message || "Account created successfully. Please check your email for OTP verification.",
           });
-          // Navigate to verification page or dashboard
-          navigate("/dashboard");
+          resetForm();
+          // Switch to login mode after successful registration
+          setIsSignUp(false);
         } else if (response.data?.access_token) {
           // If auto-login works
+          localStorage.setItem("access_token", response.data.access_token);
           toast({
             title: "Account created",
             description: "Your learning journey begins now.",
@@ -141,16 +151,21 @@ const Auth = () => {
         // Sign In - API Call
         const response = await API.login(email, password);
 
-        // Handle login response
-        if (response.data?.access_token || response.access_token) {
-          const token = response.data?.access_token || response.access_token;
-          localStorage.setItem("access_token", token);
+        if (response.success === true && response.data?.access_token) {
+          // Clear any existing token first
+          localStorage.removeItem("access_token");
+          // Store new token
+          localStorage.setItem("access_token", response.data.access_token);
 
           toast({
             title: "Welcome back",
             description: "Let's continue where you left off.",
           });
-          navigate("/dashboard");
+
+          // Small delay to ensure token is stored
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 100);
         } else {
           setErrors({ form: response.message || "Invalid email or password" });
           toast({
@@ -175,12 +190,7 @@ const Auth = () => {
 
   const toggleMode = () => {
     setIsSignUp(!isSignUp);
-    setErrors({});
-    setTouched({});
-    setPassword("");
-    setConfirmPassword("");
-    setEmail("");
-    setName("");
+    resetForm();
   };
 
   const getInputState = (field: string) => {
@@ -205,13 +215,11 @@ const Auth = () => {
     <div className="min-h-screen flex">
       {/* Left Panel - Branding & Trust */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5">
-        {/* Animated Background Elements */}
         <div className="absolute inset-0 neural-pattern" />
         <div className="absolute top-20 left-20 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-secondary/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: "1s" }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-accent/5 rounded-full blur-2xl animate-float" />
 
-        {/* Grid Pattern */}
         <div
           className="absolute inset-0 opacity-[0.02]"
           style={{
@@ -221,9 +229,7 @@ const Auth = () => {
           }}
         />
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow transition-transform group-hover:scale-105">
               <Brain className="w-5 h-5 text-primary-foreground" />
@@ -233,7 +239,6 @@ const Auth = () => {
             </span>
           </Link>
 
-          {/* Main Message */}
           <div className="space-y-8 max-w-md">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold tracking-tight leading-tight">
@@ -247,7 +252,6 @@ const Auth = () => {
               </p>
             </div>
 
-            {/* Trust Indicators */}
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -285,7 +289,6 @@ const Auth = () => {
             </div>
           </div>
 
-          {/* Footer Quotes */}
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground italic">
               "The only way to master something is to know exactly where you're weak."
@@ -299,7 +302,6 @@ const Auth = () => {
 
       {/* Right Panel - Auth Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
-        {/* Mobile Header */}
         <div className="lg:hidden p-6 border-b border-border">
           <Link to="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
@@ -311,10 +313,8 @@ const Auth = () => {
           </Link>
         </div>
 
-        {/* Form Container */}
         <div className="flex-1 flex items-center justify-center p-6 sm:p-12">
           <div className="w-full max-w-md space-y-8">
-            {/* Header */}
             <div className="space-y-2 text-center lg:text-left">
               <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
                 {isSignUp ? "Begin your journey" : "Welcome back"}
@@ -327,16 +327,14 @@ const Auth = () => {
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name Field (Sign Up Only) */}
               {isSignUp && (
                 <div className="space-y-2 animate-slide-down">
-                  <Label htmlFor="full_name" className="text-sm font-medium">
+                  <Label htmlFor="name" className="text-sm font-medium">
                     Full name
                   </Label>
                   <Input
-                    id="full_name"
+                    id="name"
                     type="text"
                     placeholder="Enter your name"
                     value={name}
@@ -353,7 +351,6 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
                   Email address
@@ -380,7 +377,6 @@ const Auth = () => {
                 )}
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">
                   Password
@@ -421,7 +417,6 @@ const Auth = () => {
                 )}
               </div>
 
-              {/* Confirm Password Field (Sign Up Only) */}
               {isSignUp && (
                 <div className="space-y-2 animate-slide-down">
                   <Label htmlFor="confirmPassword" className="text-sm font-medium">
@@ -445,7 +440,6 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Forgot Password (Sign In Only) */}
               {!isSignUp && (
                 <div className="flex justify-end">
                   <button
@@ -457,14 +451,12 @@ const Auth = () => {
                 </div>
               )}
 
-              {/* Error Message */}
               {errors.form && (
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center">
                   {errors.form}
                 </div>
               )}
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -480,7 +472,6 @@ const Auth = () => {
                 )}
               </Button>
 
-              {/* Privacy Notice */}
               <p className="text-xs text-center text-muted-foreground leading-relaxed">
                 {isSignUp ? (
                   <>
@@ -498,7 +489,6 @@ const Auth = () => {
               </p>
             </form>
 
-            {/* Divider */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
@@ -510,7 +500,6 @@ const Auth = () => {
               </div>
             </div>
 
-            {/* Toggle Mode Button */}
             <Button
               type="button"
               variant="outline"
@@ -520,7 +509,6 @@ const Auth = () => {
               {isSignUp ? "Sign in instead" : "Create an account"}
             </Button>
 
-            {/* Mobile Trust Badge */}
             <div className="lg:hidden flex items-center justify-center gap-2 pt-4">
               <Shield className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">
