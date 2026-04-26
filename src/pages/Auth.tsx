@@ -489,12 +489,6 @@ const Auth = () => {
                 </div>
               )}
 
-              {errors.form && (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm text-center">
-                  {errors.form}
-                </div>
-              )}
-
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -552,6 +546,7 @@ const Auth = () => {
               <span className="text-xs text-muted-foreground">
                 Secure, private, and built for serious learners
               </span>
+
             </div>
           </div>
         </div>
