@@ -78,6 +78,22 @@ class API {
         return this.handleResponse(response);
     }
 
+    static async getFullProfile() {
+        const response = await fetch(`${API_BASE_URL}/api/auth/user/profile/full`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
+    static async getExamHistory() {
+        const response = await fetch(`${API_BASE_URL}/api/exam/history`, {
+            method: 'GET',
+            headers: this.getHeaders(),
+        });
+        return this.handleResponse(response);
+    }
+
     static async logout() {
         localStorage.removeItem('access_token');
     }
