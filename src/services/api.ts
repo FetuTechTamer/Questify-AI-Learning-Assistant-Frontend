@@ -17,26 +17,16 @@ class API {
     }
 
     static async handleResponse(response: Response) {
+        const data = await response.json();
+
         if (!response.ok) {
-            let errorMessage = 'API Error';
-            try {
-                const errorData = await response.json();
-                errorMessage = errorData.detail || errorData.message || errorMessage;
-            } catch (e) {
-                errorMessage = response.statusText;
-            }
-            throw new Error(errorMessage);
+            throw new Error(data.message || data.detail || 'API Error');
         }
 
-        if (response.status === 204) return null;
-
-        try {
-            const data = await response.json();
-            return data;
-        } catch (e) {
-            return response;
-        }
+        return data;
     }
+
+    // ============ AUTH ENDPOINTS ============
 
     static async login(email: string, password: string) {
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -44,7 +34,13 @@ class API {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
         });
-        return this.handleResponse(response);
+        const data = await response.json();
+
+        // Store token if login successful
+        if (data.success && data.data?.access_token) {
+            localStorage.setItem('access_token', data.data.access_token);
+        }
+        return data;
     }
 
     static async register(full_name: string, email: string, password: string) {
@@ -52,6 +48,24 @@ class API {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ full_name, email, password }),
+        });
+        return this.handleResponse(response);
+    }
+
+    static async verifyOTP(email: string, otp: string) {
+        const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp }),
+        });
+        return this.handleResponse(response);
+    }
+
+    static async resendOTP(email: string) {
+        const response = await fetch(`${API_BASE_URL}/api/auth/resend-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
         });
         return this.handleResponse(response);
     }
@@ -65,16 +79,10 @@ class API {
     }
 
     static async logout() {
-        localStorage.removeItem('token');
-        try {
-            await fetch(`${API_BASE_URL}/api/auth/logout`, {
-                method: 'POST',
-                headers: this.getHeaders(),
-            });
-        } catch (e) {
-            // Ignore if no backend logout exists
-        }
+        localStorage.removeItem('access_token');
     }
+
+    // ============ MATERIAL ENDPOINTS ============
 
     static async uploadMaterial(file: File) {
         const formData = new FormData();
@@ -96,20 +104,22 @@ class API {
         return this.handleResponse(response);
     }
 
+    // ============ AI ENDPOINTS ============
+
     static async chat(message: string, materialId?: string) {
         const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify({ message, materialId }),
+            body: JSON.stringify({ message, material_id: materialId }),
         });
         return this.handleResponse(response);
     }
 
-    static async generateExam(materialId: string, numQuestions: number) {
+    static async generateExam(materialId: string, numQuestions: number = 10) {
         const response = await fetch(`${API_BASE_URL}/api/ai/generate-exam`, {
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify({ materialId, numQuestions }),
+            body: JSON.stringify({ material_id: materialId, num_questions: numQuestions }),
         });
         return this.handleResponse(response);
     }
@@ -118,7 +128,7 @@ class API {
         const response = await fetch(`${API_BASE_URL}/api/ai/concept-map`, {
             method: 'POST',
             headers: this.getHeaders(),
-            body: JSON.stringify({ materialId }),
+            body: JSON.stringify({ material_id: materialId }),
         });
         return this.handleResponse(response);
     }

@@ -125,20 +125,12 @@ const Auth = () => {
 
         if (response.success === true) {
           toast({
-            title: "Success!",
-            description: response.message || "Account created successfully. Please check your email for OTP verification.",
+            title: "Verification Required",
+            description: "Please check your email for the OTP verification code.",
           });
+          // Navigate to OTP verification page with email
+          navigate("/verify-otp", { state: { email } });
           resetForm();
-          // Switch to login mode after successful registration
-          setIsSignUp(false);
-        } else if (response.data?.access_token) {
-          // If auto-login works
-          localStorage.setItem("access_token", response.data.access_token);
-          toast({
-            title: "Account created",
-            description: "Your learning journey begins now.",
-          });
-          navigate("/dashboard");
         } else {
           setErrors({ form: response.message || "Registration failed" });
           toast({
@@ -167,10 +159,17 @@ const Auth = () => {
             navigate("/dashboard");
           }, 100);
         } else {
-          setErrors({ form: response.message || "Invalid email or password" });
+          let errorMsg = response.message || "Invalid email or password";
+          // Check if user is not verified
+          if (response.message?.toLowerCase().includes("verify") ||
+            response.message?.toLowerCase().includes("verified") ||
+            response.message?.toLowerCase().includes("otp")) {
+            errorMsg = "Please verify your email first. Check your inbox for OTP.";
+          }
+          setErrors({ form: errorMsg });
           toast({
             title: "Login failed",
-            description: response.message || "Invalid credentials",
+            description: errorMsg,
             variant: "destructive",
           });
         }

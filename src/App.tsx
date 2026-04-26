@@ -10,6 +10,7 @@ import { WalkthroughManager } from "@/components/walkthrough/WalkthroughManager"
 import { ThemeProvider } from "@/components/theme-provider";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import VerifyOTP from "./pages/VerifyOTP";
 import Dashboard from "./pages/Dashboard";
 import Upload from "./pages/Upload";
 import Exam from "./pages/Exam";
@@ -41,6 +42,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/verify-otp" element={<VerifyOTP />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/upload" element={<Upload />} />
                   <Route path="/exam" element={<Exam />} />
@@ -62,7 +64,7 @@ const App = () => (
         </AppProvider>
       </AuthProvider>
     </ThemeProvider>
-  </QueryClientProvider >
+  </QueryClientProvider>
 );
 
 export default App;
