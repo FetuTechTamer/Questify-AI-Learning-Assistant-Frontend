@@ -110,6 +110,36 @@ const Auth = () => {
     setTouched({});
   };
 
+  const clearFieldError = (field: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    // Clear error for this field when user starts typing
+    clearFieldError(field);
+    clearFieldError("form");
+
+    // Update the field
+    switch (field) {
+      case "email":
+        setEmail(value);
+        break;
+      case "password":
+        setPassword(value);
+        break;
+      case "confirmPassword":
+        setConfirmPassword(value);
+        break;
+      case "name":
+        setName(value);
+        break;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -128,14 +158,25 @@ const Auth = () => {
             title: "Verification Required",
             description: "Please check your email for the OTP verification code.",
           });
-          // Navigate to OTP verification page with email
           navigate("/verify-otp", { state: { email } });
           resetForm();
         } else {
-          setErrors({ form: response.message || "Registration failed" });
+          // Handle specific error messages
+          let errorMsg = response.message || "Registration failed";
+
+          // Check if email already exists
+          if (errorMsg.toLowerCase().includes("already") ||
+            errorMsg.toLowerCase().includes("exists")) {
+            errorMsg = "This email is already registered. Please login instead.";
+            // Switch to login mode
+            setIsSignUp(false);
+            resetForm();
+          }
+
+          setErrors({ form: errorMsg });
           toast({
             title: "Registration failed",
-            description: response.message || "Something went wrong",
+            description: errorMsg,
             variant: "destructive",
           });
         }
@@ -144,9 +185,7 @@ const Auth = () => {
         const response = await API.login(email, password);
 
         if (response.success === true && response.data?.access_token) {
-          // Clear any existing token first
           localStorage.removeItem("access_token");
-          // Store new token
           localStorage.setItem("access_token", response.data.access_token);
 
           toast({
@@ -154,18 +193,18 @@ const Auth = () => {
             description: "Let's continue where you left off.",
           });
 
-          // Small delay to ensure token is stored
           setTimeout(() => {
             navigate("/dashboard");
           }, 100);
         } else {
           let errorMsg = response.message || "Invalid email or password";
-          // Check if user is not verified
+
           if (response.message?.toLowerCase().includes("verify") ||
             response.message?.toLowerCase().includes("verified") ||
             response.message?.toLowerCase().includes("otp")) {
             errorMsg = "Please verify your email first. Check your inbox for OTP.";
           }
+
           setErrors({ form: errorMsg });
           toast({
             title: "Login failed",
@@ -337,7 +376,7 @@ const Auth = () => {
                     type="text"
                     placeholder="Enter your name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
                     onBlur={() => handleBlur("name")}
                     className={`h-12 px-4 transition-all duration-200 ${inputStateClasses("name")}`}
                   />
@@ -360,7 +399,7 @@ const Auth = () => {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
                     onBlur={() => handleBlur("email")}
                     className={`h-12 px-4 pr-10 transition-all duration-200 ${inputStateClasses("email")}`}
                   />
@@ -386,7 +425,7 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder={isSignUp ? "Create a secure password" : "Enter your password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
                     onBlur={() => handleBlur("password")}
                     className={`h-12 px-4 pr-12 transition-all duration-200 ${inputStateClasses("password")}`}
                   />
@@ -426,7 +465,7 @@ const Auth = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Confirm your password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                     onBlur={() => handleBlur("confirmPassword")}
                     className={`h-12 px-4 transition-all duration-200 ${inputStateClasses("confirmPassword")}`}
                   />
