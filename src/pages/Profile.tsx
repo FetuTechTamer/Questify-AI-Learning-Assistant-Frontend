@@ -48,8 +48,6 @@ export default function Profile() {
               <h1 className="text-3xl font-black tracking-tight mb-2">{studentProfile.name}</h1>
               <div className="flex flex-wrap gap-6 text-sm font-medium text-muted-foreground">
                 <span className="flex items-center gap-2"><Envelope weight="bold" /> {studentProfile.email}</span>
-                <span className="flex items-center gap-2"><BookOpen weight="bold" /> {studentProfile.academicYear}</span>
-                <span className="text-primary font-bold">Pro Member</span>
               </div>
             </div>
 
@@ -59,34 +57,10 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Day Streak", val: "12", icon: Flame, color: "text-orange-500 bg-orange-500/10" },
-            { label: "Avg Score", val: "89%", icon: Target, color: "text-blue-500 bg-blue-500/10" },
-            { label: "Study Hours", val: "142h", icon: Clock, color: "text-purple-500 bg-purple-500/10" },
-            { label: "Rank", val: "Top 5%", icon: Trophy, color: "text-yellow-500 bg-yellow-500/10" },
-          ].map((s, i) => (
-            <div key={i} className="bg-card border rounded-2xl p-5 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", s.color)}>
-                <s.icon weight="fill" size={24} />
-              </div>
-              <div>
-                <div className="text-2xl font-black">{s.val}</div>
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{s.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Left: Courses & History */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-card border rounded-3xl p-8 space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold">Active Courses</h3>
-                <Button variant="ghost" size="sm">View All</Button>
-              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 {enrolledCourses.map(course => (
                   <div key={course.id} className="p-4 rounded-2xl border bg-muted/20 hover:bg-background hover:border-primary/20 transition-all cursor-pointer group">
@@ -142,14 +116,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">Strong Concepts</div>
-                <div className="flex flex-wrap gap-2">
-                  {["Cell Biology", "React Hooks", "Calculus II"].map(t => (
-                    <Badge key={t} variant="secondary" className="px-3 py-1">{t}</Badge>
-                  ))}
-                </div>
-              </div>
+
             </div>
           </div>
         </div>
