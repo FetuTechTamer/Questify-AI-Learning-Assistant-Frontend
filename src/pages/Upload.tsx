@@ -310,7 +310,7 @@ export default function Upload() {
                 disabled={files.length === 0 || !files.every((f) => f.status === "done")}
                 onClick={handleContinueToConfidence}
               >
-                Analyze Content
+                Preprocess
                 <CaretRight className="ml-2 w-5 h-5" />
               </Button>
             </div>
