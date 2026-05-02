@@ -79,17 +79,7 @@ export default function Exam() {
             <h1 className="text-3xl font-bold tracking-tight">Exam Room</h1>
             <p className="text-muted-foreground mt-1">Configure and start your practice assessment</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold">{studentProfile.averageScore}%</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Avg Score</p>
-            </div>
-            <div className="h-10 w-px bg-border mx-2" />
-            <div className="text-center">
-              <p className="text-2xl font-bold">{studentProfile.examsCompleted}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Completed</p>
-            </div>
-          </div>
+
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">

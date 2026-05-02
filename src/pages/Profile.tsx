@@ -57,7 +57,8 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="w-full space-y-8">
+
           {/* Left: Courses & History */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-card border rounded-3xl p-8 space-y-6">
@@ -96,27 +97,6 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Right: Insights */}
-          <div className="space-y-6">
-            <div className="bg-card border rounded-3xl p-6 space-y-6">
-              <h3 className="text-lg font-bold">Cognitive Profile</h3>
-
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10">
-                  <div className="text-xs font-bold uppercase tracking-widest text-primary mb-2">Learning Style</div>
-                  <div className="font-black text-lg">{studentProfile.learningStyle}</div>
-                </div>
-
-                <div className="p-4 rounded-2xl bg-muted/50">
-                  <div className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">Peak Hours</div>
-                  <div className="font-bold">{studentProfile.peakPerformanceTime}</div>
-                </div>
-              </div>
-
-
             </div>
           </div>
         </div>
