@@ -63,16 +63,25 @@ export const authService = {
   },
 
   deleteAccount: async () => {
+    console.log('--- Delete Account Request ---');
+    console.log('URL: /api/auth/user');
+    console.log('Token present?', !!localStorage.getItem('access_token'));
     try {
-      console.log('Attempting account deletion: DELETE /api/auth/user');
       const response = await apiClient.delete('/api/auth/user');
-      console.log('Account deletion success:', response.data);
+      console.log('Delete success:', response.data);
       return response.data.data;
     } catch (error: any) {
-      console.error('Account deletion failed:', error);
+      console.error('Delete error details:', error);
       if (error.response) {
         console.error('Status:', error.response.status);
-        console.error('Data:', JSON.stringify(error.response.data, null, 2));
+        console.error('Response data:', error.response.data);
+        if (error.response.data?.detail) {
+          console.error('Validation details:', JSON.stringify(error.response.data.detail, null, 2));
+        }
+      } else if (error.request) {
+        console.error('No response received - CORS or network issue');
+      } else {
+        console.error('Error message:', error.message);
       }
       throw error;
     }
