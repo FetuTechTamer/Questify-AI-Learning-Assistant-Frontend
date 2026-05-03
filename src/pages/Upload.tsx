@@ -7,6 +7,8 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
+import { materialService } from "../services/materialService";
+import { useToast } from "@/hooks/use-toast";
 
 interface UploadedFile {
   id: string;
@@ -52,6 +54,7 @@ export default function Upload() {
   const [step, setStep] = useState<"upload" | "confidence" | "units">("upload");
   const [extractedUnits, setExtractedUnits] = useState<ExtractedUnit[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { toast } = useToast();
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -67,51 +70,67 @@ export default function Upload() {
     }
   };
 
-  const processFiles = (newFiles: File[]) => {
-    const uploadFiles: UploadedFile[] = newFiles.map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: "uploading",
-      progress: 0,
-    }));
+  const processFiles = async (newFiles: File[]) => {
+    for (const file of newFiles) {
+      const tempId = Math.random().toString(36).substr(2, 9);
+      const newUploadFile: UploadedFile = {
+        id: tempId,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        status: "uploading",
+        progress: 30,
+      };
 
-    setFiles((prev) => [...prev, ...uploadFiles]);
+      setFiles((prev) => [...prev, newUploadFile]);
 
-    // Simulate upload progress
-    uploadFiles.forEach((file) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === file.id ? { ...f, status: "processing", progress: 100 } : f
-            )
-          );
-          // Simulate processing
-          setTimeout(() => {
-            setFiles((prev) =>
-              prev.map((f) =>
-                f.id === file.id ? { ...f, status: "done" } : f
-              )
-            );
-          }, 1500);
-        } else {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === file.id ? { ...f, progress } : f
-            )
-          );
+      try {
+        const response = await materialService.upload(file);
+        const material_id = response.material_id;
+
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === tempId ? { ...f, id: material_id, status: "done", progress: 100 } : f
+          )
+        );
+
+        // Store material_id in localStorage for temporary "list" access
+        const storedMaterials = JSON.parse(localStorage.getItem("uploaded_materials") || "[]");
+        if (!storedMaterials.includes(material_id)) {
+          localStorage.setItem("uploaded_materials", JSON.stringify([...storedMaterials, material_id]));
         }
-      }, 200);
-    });
+
+        toast({
+          title: "Upload Successful",
+          description: `${file.name} has been uploaded.`,
+        });
+      } catch (error: any) {
+        console.error("Upload error:", error);
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === tempId ? { ...f, status: "error" } : f
+          )
+        );
+        toast({
+          title: "Upload Failed",
+          description: error.response?.data?.message || error.message || "Failed to upload file",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
-  const removeFile = (id: string) => {
+  const removeFile = async (id: string) => {
+    const fileToRemove = files.find(f => f.id === id);
+    if (fileToRemove && fileToRemove.status === "done") {
+      try {
+        await materialService.delete(id);
+        const storedMaterials = JSON.parse(localStorage.getItem("uploaded_materials") || "[]");
+        localStorage.setItem("uploaded_materials", JSON.stringify(storedMaterials.filter((mid: string) => mid !== id)));
+      } catch (error) {
+        console.error("Delete error:", error);
+      }
+    }
     setFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
@@ -121,44 +140,42 @@ export default function Upload() {
     }
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setIsProcessing(true);
+    const materialIds = files.filter(f => f.status === "done").map(f => f.id);
 
-    // Simulate AI analysis
-    setTimeout(() => {
+    try {
+      const response = await materialService.preprocess(materialIds);
+      
       setExtractedUnits([
         {
-          id: "u1",
-          title: "Introduction to Programming",
-          description: "Foundational concepts including variables, data types, and basic syntax.",
-          topics: ["Variables", "Data Types", "Operators", "Basic I/O"],
-          confidence: 75,
-        },
-        {
-          id: "u2",
-          title: "Control Structures",
-          description: "Decision making and loops in programming.",
-          topics: ["If-Else", "Switch", "For Loops", "While Loops"],
-          confidence: 60,
-        },
-        {
-          id: "u3",
-          title: "Functions & Methods",
-          description: "Modular programming with reusable code blocks.",
-          topics: ["Function Definition", "Parameters", "Return Values", "Scope"],
-          confidence: 45,
-        },
-        {
-          id: "u4",
-          title: "Data Structures",
-          description: "Organizing and storing data efficiently.",
-          topics: ["Arrays", "Lists", "Dictionaries", "Sets"],
-          confidence: 30,
-        },
+          id: response.collection_id,
+          title: response.title,
+          description: "Synthesized content from your uploaded materials.",
+          topics: ["Core Concepts", "Key Findings"],
+          confidence: response.confidence || confidence[0],
+        }
       ]);
+
+      // Store collection_id in localStorage
+      localStorage.setItem("active_collection_id", response.collection_id);
+
       setIsProcessing(false);
       setStep("units");
-    }, 2500);
+      
+      toast({
+        title: "Analysis Complete",
+        description: `Successfully processed ${files.length} documents.`,
+      });
+    } catch (error: any) {
+      console.error("Preprocess error:", error);
+      setIsProcessing(false);
+      toast({
+        title: "Analysis Failed",
+        description: error.response?.data?.message || error.message || "Failed to process materials",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

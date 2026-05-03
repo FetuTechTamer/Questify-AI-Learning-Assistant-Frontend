@@ -6,9 +6,6 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 
-// Shared types for the content
-import { MOCK_CHAPTERS } from "@/data/mockChapters";
-
 export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
     const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
     const STEPS = [
@@ -19,9 +16,14 @@ export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFile
         { id: 'review', label: 'Review', icon: CheckCircle, desc: "Refine your mental model." },
     ];
 
-    // Mock content based on chapterId or default
-    const content = MOCK_CHAPTERS[chapterId || ''] || MOCK_CHAPTERS['Database Normalization'] || {
-        sections: [{ title: 'Introduction', content: '...' }]
+    // Default content for SQ3R when no real data is available
+    const content = {
+        sections: [
+            { title: 'Introduction', content: 'This section provides an overview of the core concepts.' },
+            { title: 'Theoretical Framework', content: 'Explaining the underlying principles and models.' },
+            { title: 'Practical Application', content: 'Real-world examples and use cases.' },
+            { title: 'Optimization Strategies', content: 'How to improve performance and efficiency.' }
+        ]
     };
 
     const handleNext = () => {
@@ -113,12 +115,6 @@ export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFile
                                         <div key={i} className="prose dark:prose-invert max-w-none">
                                             <h3>{sec.title}</h3>
                                             <p>{sec.content}</p>
-                                            {sec.subsections?.map((sub: any, j: number) => (
-                                                <div key={j} className="pl-4 border-l-2 border-muted mt-4">
-                                                    <h4 className="font-bold">{sub.title}</h4>
-                                                    <p>{sub.content}</p>
-                                                </div>
-                                            ))}
                                         </div>
                                     ))}
                                 </div>
@@ -152,11 +148,11 @@ export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFile
                                     </p>
                                     <div className="grid grid-cols-2 gap-4 max-w-md mx-auto mt-8">
                                         <div className="p-4 rounded-lg border bg-muted/20">
-                                            <div className="text-2xl font-bold">12</div>
+                                            <div className="text-2xl font-bold">4</div>
                                             <div className="text-xs uppercase text-muted-foreground">Original Questions</div>
                                         </div>
                                         <div className="p-4 rounded-lg border bg-muted/20">
-                                            <div className="text-2xl font-bold">850</div>
+                                            <div className="text-2xl font-bold">250</div>
                                             <div className="text-xs uppercase text-muted-foreground">Words Recited</div>
                                         </div>
                                     </div>

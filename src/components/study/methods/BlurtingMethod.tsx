@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { MOCK_CHAPTERS } from "@/data/mockChapters";
+import { NoteContent } from "@/types/notes";
 
 type BlurtingPhase = 'READ' | 'BLURT' | 'REVIEW';
 
@@ -17,10 +17,8 @@ export function BlurtingMethod({ onBack, chapterId }: { onBack: () => void; book
     const [isTimerRunning, setIsTimerRunning] = useState(true);
 
     // Get content
-    const content = MOCK_CHAPTERS[chapterId || '']?.sections?.[0]?.content ||
-        "Blurting is a technique where you read a section of text for a set time, then close the book and write down everything you remember. This forces active recall and identifies gaps in your knowledge.";
-
-    const title = MOCK_CHAPTERS[chapterId || '']?.sections?.[0]?.title || "Blurting Practice";
+    const content = "Blurting is a technique where you read a section of text for a set time, then close the book and write down everything you remember. This forces active recall and identifies gaps in your knowledge.";
+    const title = "Blurting Practice";
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -83,7 +81,7 @@ export function BlurtingMethod({ onBack, chapterId }: { onBack: () => void; book
                             <p className="leading-loose">{content}</p>
                             <p className="leading-loose mt-4">
                                 Neuroplasticity is the brain's ability to reorganize itself by forming new neural connections throughout life.
-                                Neuroplasticity allows the neurons (nerve cells) in the brain to compensate for injury and disease and to adjust their activities in response to new situations or to changes in their environment.
+                                Neuroplasticity allows the neurons ( nerve cells) in the brain to compensate for injury and disease and to adjust their activities in response to new situations or to changes in their environment.
                             </p>
                         </ScrollArea>
                     </div>

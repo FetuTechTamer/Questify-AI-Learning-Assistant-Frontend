@@ -1,4 +1,4 @@
-import { NoteContent } from "@/data/mockNotes";
+import { NoteContent } from "@/types/notes";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Warning, ArrowRight, Lightbulb, User } from "@phosphor-icons/react";

@@ -1,4 +1,4 @@
-import { NoteContent } from './mockNotes';
+import { NoteContent } from "@/types/notes";
 
 export interface TopicMaster {
     id: string;
