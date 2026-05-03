@@ -39,7 +39,7 @@ export const authService = {
     console.log('--- Upload Avatar Request ---');
     console.log('File:', file.name, file.type, file.size);
     const formData = new FormData();
-    formData.append('avatar', file);
+    formData.append('file', file);
     try {
       const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
       console.log('Upload success:', response.data);
