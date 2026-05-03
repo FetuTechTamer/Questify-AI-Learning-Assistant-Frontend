@@ -38,8 +38,8 @@ export const authService = {
   updateAvatar: async (file: File) => {
     const formData = new FormData();
     formData.append('avatar', file);
-    // Let Axios handle the Content-Type header and boundary automatically
-    const response = await apiClient.post('/api/auth/user/profile/avatar', formData);
+    // Changed from POST to PUT as per backend requirements
+    const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
     return response.data.data;
   },
 
@@ -49,8 +49,19 @@ export const authService = {
   },
 
   deleteAccount: async () => {
-    const response = await apiClient.delete('/api/auth/user');
-    return response.data.data;
+    try {
+      console.log('Attempting account deletion: DELETE /api/auth/user');
+      const response = await apiClient.delete('/api/auth/user');
+      console.log('Account deletion success:', response.data);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Account deletion failed:', error);
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Data:', JSON.stringify(error.response.data, null, 2));
+      }
+      throw error;
+    }
   },
 
   logout: () => {
