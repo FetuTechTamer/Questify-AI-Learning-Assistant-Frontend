@@ -36,11 +36,25 @@ export const authService = {
   },
 
   updateAvatar: async (file: File) => {
+    console.log('--- Upload Avatar Request ---');
+    console.log('File:', file.name, file.type, file.size);
     const formData = new FormData();
     formData.append('avatar', file);
-    // Changed from POST to PUT as per backend requirements
-    const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
-    return response.data.data;
+    try {
+      const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
+      console.log('Upload success:', response.data);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      if (error.response) {
+        console.error('Status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        if (error.response.data?.detail) {
+          console.error('Validation details:', JSON.stringify(error.response.data.detail, null, 2));
+        }
+      }
+      throw error;
+    }
   },
 
   deleteAvatar: async () => {
