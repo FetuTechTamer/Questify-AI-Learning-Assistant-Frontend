@@ -30,7 +30,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarUrl } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Message {
   id: string;
@@ -96,6 +98,7 @@ const initialChatHistory: ChatSession[] = [
 
 const QuestyChat = () => {
   const [chatHistory, setChatHistory] = useState<ChatSession[]>(initialChatHistory);
+  const { user } = useAuth();
   const [activeChat, setActiveChat] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -298,9 +301,12 @@ const QuestyChat = () => {
                       </div>
 
                       {message.role === 'user' && (
-                        <div className="w-9 h-9 rounded-xl bg-muted flex flex-shrink-0 items-center justify-center shadow-sm self-end mb-2">
-                          <User className="w-5 h-5 text-muted-foreground" weight="bold" />
-                        </div>
+                        <Avatar className="w-9 h-9 rounded-xl shadow-sm self-end mb-2">
+                          <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                          <AvatarFallback className="bg-muted text-muted-foreground text-xs font-bold">
+                            {user?.full_name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
                       )}
                     </div>
                   ))}

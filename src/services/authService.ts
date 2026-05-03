@@ -43,6 +43,9 @@ export const authService = {
     try {
       const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
       console.log('Upload success:', response.data);
+      if (response.data?.data?.avatar_url) {
+        console.log('Backend avatar_url after upload:', response.data.data.avatar_url);
+      }
       return response.data.data;
     } catch (error: any) {
       console.error('Avatar upload error:', error);

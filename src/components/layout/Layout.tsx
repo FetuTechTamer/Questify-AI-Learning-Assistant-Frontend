@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 import { Bell, MagnifyingGlass, Sun, Moon } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAvatarUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -105,6 +106,7 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
                 className="flex items-center gap-2 hover:bg-muted/50 p-1 rounded-full transition-colors"
               >
                 <Avatar className="h-8 w-8">
+                  <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                     {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                   </AvatarFallback>

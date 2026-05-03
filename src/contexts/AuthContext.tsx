@@ -25,6 +25,7 @@ interface AuthContextType {
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +36,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const refreshProfile = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+
+    try {
+      const profile = await authService.getProfile();
+      console.log('User profile refreshed:', profile);
+      if (profile?.avatar_url) {
+        console.log('Current avatar_url in state:', profile.avatar_url);
+      }
+      setUser(profile);
+    } catch (error) {
+      console.error("Failed to refresh user profile:", error);
+    }
+  };
+
   useEffect(() => {
     const loadUser = async () => {
       const token = localStorage.getItem('access_token');
@@ -42,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession({ access_token: token });
         try {
           const profile = await authService.getProfile();
+          console.log('User profile loaded on mount:', profile);
           setUser(profile);
           setIsAdmin(profile?.role === 'admin');
         } catch (error) {
@@ -109,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       isAdmin,
+      refreshProfile,
     }}>
       {children}
     </AuthContext.Provider>

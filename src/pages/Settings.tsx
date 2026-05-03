@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarUrl } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,7 +45,7 @@ const sections: SettingSection[] = [
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("account");
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -64,7 +64,7 @@ export default function Settings() {
     try {
       await authService.updateProfile({ full_name: fullName });
       toast.success("Profile updated successfully!");
-      window.location.reload(); 
+      await refreshProfile();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
@@ -85,7 +85,7 @@ export default function Settings() {
     try {
       await authService.updateAvatar(file);
       toast.success("Avatar updated successfully!");
-      window.location.reload();
+      await refreshProfile();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to upload avatar");
     } finally {
@@ -98,7 +98,7 @@ export default function Settings() {
     try {
       await authService.deleteAvatar();
       toast.success("Avatar removed");
-      window.location.reload();
+      await refreshProfile();
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to remove avatar");
     } finally {
@@ -165,7 +165,7 @@ export default function Settings() {
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative group">
                       <Avatar className="w-24 h-24 border-4 border-background shadow-xl">
-                        <AvatarImage src={user?.avatar_url || ""} alt={user?.full_name} />
+                        <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
                         <AvatarFallback className="gradient-primary text-2xl font-bold text-primary-foreground">
                           {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                         </AvatarFallback>

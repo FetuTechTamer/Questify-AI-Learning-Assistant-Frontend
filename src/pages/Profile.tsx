@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Layout } from "@/components/layout/Layout";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarUrl } from "@/lib/utils";
 import { courses, examResults } from "@/data/mockData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -33,7 +33,8 @@ export default function Profile() {
           <div className="px-8 flex flex-col md:flex-row items-end gap-8 -mt-16 relative z-10">
             <div className="w-32 h-32 rounded-3xl bg-background border-4 border-background shadow-2xl flex items-center justify-center overflow-hidden">
               <Avatar className="w-full h-full rounded-none">
-                <AvatarImage src={user?.avatar_url || ""} alt={user?.full_name} />
+                {user?.avatar_url && console.log('Profile page using Avatar URL:', getAvatarUrl(user.avatar_url))}
+                <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
                 <AvatarFallback className="bg-primary/10 text-4xl font-black text-primary">
                   {user?.full_name?.charAt(0) || "U"}
                 </AvatarFallback>
