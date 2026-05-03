@@ -8,6 +8,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import { WalkthroughProvider } from "@/components/walkthrough/WalkthroughContext";
 import { WalkthroughManager } from "@/components/walkthrough/WalkthroughManager";
 import { ThemeProvider } from "@/components/theme-provider";
+import { MaterialProvider } from "./contexts/MaterialContext";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import VerifyOTP from "./pages/VerifyOTP";
@@ -33,34 +34,36 @@ const App = () => (
     <ThemeProvider defaultTheme="light" storageKey="questify-theme" attribute="class">
       <AuthProvider>
         <AppProvider>
-          <WalkthroughProvider>
-            <WalkthroughManager />
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/verify-otp" element={<VerifyOTP />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/upload" element={<Upload />} />
-                  <Route path="/exam" element={<Exam />} />
-                  <Route path="/notes" element={<Notes />} />
-                  <Route path="/study-room" element={<StudyRoom />} />
-                  <Route path="/planner" element={<Planner />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/billing" element={<Billing />} />
-                  <Route path="/exam-history" element={<ExamHistory />} />
-                  <Route path="/questy-chat" element={<QuestyChat />} />
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </WalkthroughProvider>
+          <MaterialProvider>
+            <WalkthroughProvider>
+              <WalkthroughManager />
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/verify-otp" element={<VerifyOTP />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/upload" element={<Upload />} />
+                    <Route path="/exam" element={<Exam />} />
+                    <Route path="/notes" element={<Notes />} />
+                    <Route path="/study-room" element={<StudyRoom />} />
+                    <Route path="/planner" element={<Planner />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/billing" element={<Billing />} />
+                    <Route path="/exam-history" element={<ExamHistory />} />
+                    <Route path="/questy-chat" element={<QuestyChat />} />
+                    <Route path="/admin" element={<AdminDashboard />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </WalkthroughProvider>
+          </MaterialProvider>
         </AppProvider>
       </AuthProvider>
     </ThemeProvider>

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { weeklyPlan, studentProfile, courses } from "@/data/mockData";
+import { weeklyPlan, courses } from "@/data/mockData";
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 

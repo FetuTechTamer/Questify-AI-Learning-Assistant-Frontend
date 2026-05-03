@@ -23,7 +23,7 @@ import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { courses, questionTypes, studentProfile } from "@/data/mockData";
+import { courses, questionTypes } from "@/data/mockData";
 import { useExam } from "@/hooks/useExam";
 import ExamRoom from "./ExamRoom";
 

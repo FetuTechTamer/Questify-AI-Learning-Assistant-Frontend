@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import {
   Sparkle, Flame, Target, BookOpen, ArrowRight,
@@ -15,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LineChart as RechartsLineChart,
   BarChart as RechartsBarChart,
@@ -479,6 +481,9 @@ export default function Dashboard() {
   const [timeRange, setTimeRange] = useState('week');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   useEffect(() => {
     const loadData = () => {
       setPerformanceData(generatePerformanceData());
@@ -502,26 +507,41 @@ export default function Dashboard() {
   }, [autoRefresh]);
 
   const handleStartSession = (type: string) => {
-    alert(`Starting ${type} session...`);
-    // Implementation would connect to your backend
+    switch (type) {
+      case 'study':
+        navigate('/upload');
+        break;
+      case 'challenge':
+        navigate('/study-room');
+        break;
+      case 'review':
+        navigate('/notes');
+        break;
+      case 'exam':
+        navigate('/exam');
+        break;
+      default:
+        break;
+    }
   };
 
-
-
   return (
-    <DashboardLayout title="NeuroLearning Command Center">
+    <DashboardLayout title="">
       <div className="max-w-7xl mx-auto pb-20 space-y-8">
 
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-black tracking-tight">Welcome back.</h1>
+              <h1 className="text-4xl font-black tracking-tight">
+                Welcome back, {user?.full_name?.split(' ')[0] || 'Learner'}.
+              </h1>
               <Badge variant="outline" className="text-xs px-3 py-1">
                 <Sparkle className="w-3 h-3 mr-1" />
                 AI-Enhanced
               </Badge>
             </div>
+            <p className="text-muted-foreground">{user?.email}</p>
           </div>
         </div>
         {/* Action Grid */}

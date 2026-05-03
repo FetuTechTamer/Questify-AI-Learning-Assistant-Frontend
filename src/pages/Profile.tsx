@@ -1,31 +1,24 @@
 import {
-  User,
   Envelope,
-  Calendar,
-  Clock,
-  Trophy,
-  Target,
-  Flame,
-  BookOpen,
-  TrendUp,
-  Star,
-  Medal,
-  ChartBar,
-  PencilSimple
+  PencilSimple,
 } from "@phosphor-icons/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { studentProfile, courses, examResults } from "@/data/mockData";
+import { courses, examResults } from "@/data/mockData";
+import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const enrolledCourses = courses.filter((c) =>
-    studentProfile.enrolledCourses.includes(c.id)
+    (user?.enrolledCourses || []).includes(c.id)
   );
 
   return (
@@ -39,31 +32,37 @@ export default function Profile() {
 
           <div className="px-8 flex flex-col md:flex-row items-end gap-8 -mt-16 relative z-10">
             <div className="w-32 h-32 rounded-3xl bg-background border-4 border-background shadow-2xl flex items-center justify-center overflow-hidden">
-              <div className="w-full h-full bg-primary/10 flex items-center justify-center text-4xl font-black text-primary">
-                {studentProfile.name.charAt(0)}
-              </div>
+              <Avatar className="w-full h-full rounded-none">
+                <AvatarImage src={user?.avatar_url || ""} alt={user?.full_name} />
+                <AvatarFallback className="bg-primary/10 text-4xl font-black text-primary">
+                  {user?.full_name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
             </div>
 
             <div className="flex-1 pb-2">
-              <h1 className="text-3xl font-black tracking-tight mb-2">{studentProfile.name}</h1>
+              <h1 className="text-3xl font-black tracking-tight mb-2">{user?.full_name || "Student"}</h1>
               <div className="flex flex-wrap gap-6 text-sm font-medium text-muted-foreground">
-                <span className="flex items-center gap-2"><Envelope weight="bold" /> {studentProfile.email}</span>
+                <span className="flex items-center gap-2"><Envelope weight="bold" /> {user?.email}</span>
               </div>
             </div>
 
-            <Button variant="outline" className="mb-2 rounded-full font-bold">
+            <Button 
+              variant="outline" 
+              className="mb-2 rounded-full font-bold"
+              onClick={() => navigate("/settings")}
+            >
               <PencilSimple className="mr-2" /> Edit Profile
             </Button>
           </div>
         </div>
 
         <div className="w-full space-y-8">
-
           {/* Left: Courses & History */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-card border rounded-3xl p-8 space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
-                {enrolledCourses.map(course => (
+                {enrolledCourses.length > 0 ? enrolledCourses.map(course => (
                   <div key={course.id} className="p-4 rounded-2xl border bg-muted/20 hover:bg-background hover:border-primary/20 transition-all cursor-pointer group">
                     <div className="flex justify-between items-start mb-4">
                       <span className="text-3xl group-hover:scale-110 transition-transform">{course.icon}</span>
@@ -72,7 +71,11 @@ export default function Profile() {
                     <h4 className="font-bold mb-1">{course.name}</h4>
                     <Progress value={course.progress} className="h-1.5" />
                   </div>
-                ))}
+                )) : (
+                  <div className="col-span-2 py-8 text-center text-muted-foreground">
+                    No enrolled courses yet.
+                  </div>
+                )}
               </div>
             </div>
 

@@ -9,9 +9,9 @@ import { Bell, MagnifyingGlass, Sun, Moon } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { studentProfile } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,6 +25,7 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
   const { preferences } = useAppContext();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
+  const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -105,12 +106,11 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                    {studentProfile.name.split(" ").map((n) => n[0]).join("")}
+                    {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block text-left text-xs">
-                  <p className="font-bold leading-none">{studentProfile.name}</p>
-                  <p className="text-muted-foreground mt-0.5">Premium Student</p>
+                  <p className="font-bold leading-none">{user?.full_name || "Student"}</p>
                 </div>
               </button>
             </div>

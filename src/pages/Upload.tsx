@@ -1,31 +1,14 @@
 import { useState, useCallback } from "react";
-import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle } from "@phosphor-icons/react";
+import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle, Brain, ChartBar, WarningCircle } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { materialService } from "../services/materialService";
-import { useToast } from "@/hooks/use-toast";
-
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  status: "uploading" | "processing" | "done" | "error";
-  progress: number;
-}
-
-interface ExtractedUnit {
-  id: string;
-  title: string;
-  description: string;
-  topics: string[];
-  confidence: number;
-}
+import { useMaterialProcessing } from "../contexts/MaterialContext";
+import { useNavigate } from "react-router-dom";
 
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return bytes + " B";
@@ -48,21 +31,31 @@ const getConfidenceMessage = (confidence: number): string => {
 };
 
 export default function Upload() {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const {
+    files,
+    wizardStep,
+    confidence,
+    collectionId,
+    isProcessing,
+    analysisReady,
+    extractedUnits,
+    setWizardStep,
+    setConfidence,
+    processFiles,
+    removeFile,
+    handlePreprocess,
+    handleStartAnalysis,
+  } = useMaterialProcessing();
+
   const [isDragOver, setIsDragOver] = useState(false);
-  const [confidence, setConfidence] = useState([50]);
-  const [step, setStep] = useState<"upload" | "confidence" | "units">("upload");
-  const [extractedUnits, setExtractedUnits] = useState<ExtractedUnit[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-
     const droppedFiles = Array.from(e.dataTransfer.files);
     processFiles(droppedFiles);
-  }, []);
+  }, [processFiles]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -70,170 +63,51 @@ export default function Upload() {
     }
   };
 
-  const processFiles = async (newFiles: File[]) => {
-    for (const file of newFiles) {
-      const tempId = Math.random().toString(36).substr(2, 9);
-      const newUploadFile: UploadedFile = {
-        id: tempId,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        status: "uploading",
-        progress: 30,
-      };
-
-      setFiles((prev) => [...prev, newUploadFile]);
-
-      try {
-        const response = await materialService.upload(file);
-        const material_id = response.material_id;
-
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === tempId ? { ...f, id: material_id, status: "done", progress: 100 } : f
-          )
-        );
-
-        // Store material_id in localStorage for temporary "list" access
-        const storedMaterials = JSON.parse(localStorage.getItem("uploaded_materials") || "[]");
-        if (!storedMaterials.includes(material_id)) {
-          localStorage.setItem("uploaded_materials", JSON.stringify([...storedMaterials, material_id]));
-        }
-
-        toast({
-          title: "Upload Successful",
-          description: `${file.name} has been uploaded.`,
-        });
-      } catch (error: any) {
-        console.error("Upload error:", error);
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === tempId ? { ...f, status: "error" } : f
-          )
-        );
-        toast({
-          title: "Upload Failed",
-          description: error.response?.data?.message || error.message || "Failed to upload file",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const removeFile = async (id: string) => {
-    const fileToRemove = files.find(f => f.id === id);
-    if (fileToRemove && fileToRemove.status === "done") {
-      try {
-        await materialService.delete(id);
-        const storedMaterials = JSON.parse(localStorage.getItem("uploaded_materials") || "[]");
-        localStorage.setItem("uploaded_materials", JSON.stringify(storedMaterials.filter((mid: string) => mid !== id)));
-      } catch (error) {
-        console.error("Delete error:", error);
-      }
-    }
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-  };
-
-  const handleContinueToConfidence = () => {
-    if (files.length > 0 && files.every((f) => f.status === "done")) {
-      setStep("confidence");
-    }
-  };
-
-  const handleAnalyze = async () => {
-    setIsProcessing(true);
-    const materialIds = files.filter(f => f.status === "done").map(f => f.id);
-
-    try {
-      const response = await materialService.preprocess(materialIds);
-      
-      setExtractedUnits([
-        {
-          id: response.collection_id,
-          title: response.title,
-          description: "Synthesized content from your uploaded materials.",
-          topics: ["Core Concepts", "Key Findings"],
-          confidence: response.confidence || confidence[0],
-        }
-      ]);
-
-      // Store collection_id in localStorage
-      localStorage.setItem("active_collection_id", response.collection_id);
-
-      setIsProcessing(false);
-      setStep("units");
-      
-      toast({
-        title: "Analysis Complete",
-        description: `Successfully processed ${files.length} documents.`,
-      });
-    } catch (error: any) {
-      console.error("Preprocess error:", error);
-      setIsProcessing(false);
-      toast({
-        title: "Analysis Failed",
-        description: error.response?.data?.message || error.message || "Failed to process materials",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <Layout >
+    <Layout>
       <div className="container py-6 max-w-5xl">
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          {["Upload", "Confidence", "Review"].map((label, index) => {
-            const stepIndex = index;
-            const currentStep = step === "upload" ? 0 : step === "confidence" ? 1 : 2;
-            const isActive = stepIndex === currentStep;
-            const isComplete = stepIndex < currentStep;
-
-            return (
-              <div key={label} className="flex items-center">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
-                      isComplete
-                        ? "bg-primary text-primary-foreground"
-                        : isActive
-                          ? "bg-primary/20 text-primary border-2 border-primary"
-                          : "bg-muted text-muted-foreground"
-                    )}
-                  >
-                    {isComplete ? <Check className="w-4 h-4" /> : index + 1}
-                  </div>
-                  <span className={cn("text-sm font-medium hidden sm:block", isActive ? "text-foreground" : "text-muted-foreground")}>
-                    {label}
-                  </span>
+          {["Upload", "Preprocess", "Analysis", "Study"].map((label, index) => (
+            <div key={label} className="flex items-center">
+              <div className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all",
+                    wizardStep > index + 1
+                      ? "bg-primary text-primary-foreground"
+                      : wizardStep === index + 1
+                        ? "bg-primary/20 text-primary border-2 border-primary"
+                        : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {wizardStep > index + 1 ? <Check className="w-4 h-4" /> : index + 1}
                 </div>
-                {index < 2 && (
-                  <div className="h-[2px] w-8 bg-muted mx-4" />
-                )}
+                <span className={cn("text-sm font-medium hidden sm:block", wizardStep === index + 1 ? "text-foreground" : "text-muted-foreground")}>
+                  {label}
+                </span>
               </div>
-            );
-          })}
+              {index < 3 && (
+                <div className="h-[2px] w-8 bg-muted mx-4" />
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Step 1: Upload */}
-        {step === "upload" && (
+        {wizardStep === 1 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
               <h1 className="text-3xl font-bold tracking-tight">Upload Materials</h1>
               <p className="text-muted-foreground mt-2">Questy will analyze your documents to build a personalized study plan</p>
             </div>
 
-            {/* Drop Zone */}
             <Card
               className={cn(
                 "border-2 border-dashed transition-all duration-300 rounded-xl",
                 isDragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted hover:border-primary/50"
               )}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragOver(true);
-              }}
+              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
               onDragLeave={() => setIsDragOver(false)}
               onDrop={handleDrop}
             >
@@ -257,7 +131,7 @@ export default function Upload() {
                       multiple
                       className="hidden"
                       onChange={handleFileSelect}
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
                     />
                     <Button variant="outline" className="cursor-pointer rounded-full px-8 h-12" asChild>
                       <span>Choose Files</span>
@@ -267,7 +141,6 @@ export default function Upload() {
               </CardContent>
             </Card>
 
-            {/* Uploaded Files */}
             {files.length > 0 && (
               <div className="space-y-3">
                 <h4 className="text-sm font-bold flex items-center gap-2 px-2">
@@ -275,27 +148,34 @@ export default function Upload() {
                   Uploaded Documents
                 </h4>
                 {files.map((file) => (
-                  <Card key={file.id} className="rounded-lg border-none shadow-sm overflow-hidden group">
+                  <Card key={file.id} className={cn(
+                    "rounded-lg border shadow-sm overflow-hidden group transition-all",
+                    file.status === "error" ? "border-destructive/50 bg-destructive/5" : "border-none"
+                  )}>
                     <CardContent className="p-4 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                        <FileText className="w-6 h-6" />
+                      <div className={cn(
+                        "w-12 h-12 rounded-xl flex items-center justify-center",
+                        file.status === "error" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"
+                      )}>
+                        {file.status === "error" ? <WarningCircle size={24} /> : <FileText size={24} />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-sm truncate">{file.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-bold text-sm truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground shrink-0">{formatFileSize(file.size)}</p>
+                        </div>
                         {file.status === "uploading" && (
                           <Progress value={file.progress} className="h-1.5 mt-2" />
                         )}
+                        {file.status === "error" && (
+                          <p className="text-[10px] text-destructive font-medium mt-1">
+                            {file.errorMessage}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
-                        {file.status === "processing" && (
-                          <Badge variant="secondary" className="gap-2 rounded-full py-1">
-                            <CircleNotch className="w-3 h-3 animate-spin" />
-                            Processing
-                          </Badge>
-                        )}
                         {file.status === "done" && (
-                          <Badge className="bg-success/10 text-success border-none rounded-full py-1">
+                          <Badge className="bg-green-500/10 text-green-500 border-none rounded-full py-1">
                             <Check className="w-3 h-3 mr-1" />
                             Ready
                           </Badge>
@@ -315,17 +195,12 @@ export default function Upload() {
               </div>
             )}
 
-            {/* Action Bar */}
-            <div className="flex justify-between items-center bg-card p-4 rounded-xl border  mt-8 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="hidden md:block">
-                <p className="text-sm font-bold">{files.length} files selected</p>
-                <p className="text-xs text-muted-foreground">All files will be analyzed by Questy AI</p>
-              </div>
+            <div className="flex justify-end items-center bg-card p-4 rounded-xl border mt-8">
               <Button
                 size="lg"
-                className="w-full md:w-auto rounded-full px-12 h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
-                disabled={files.length === 0 || !files.every((f) => f.status === "done")}
-                onClick={handleContinueToConfidence}
+                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
+                disabled={files.length === 0 || files.some(f => f.status === "uploading") || !files.some(f => f.status === "done")}
+                onClick={() => setWizardStep(2)}
               >
                 Preprocess
                 <CaretRight className="ml-2 w-5 h-5" />
@@ -334,18 +209,18 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Step 2: Confidence */}
-        {step === "confidence" && (
+        {/* Step 2: Preprocess */}
+        {wizardStep === 2 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Sync Baseline</h1>
-              <p className="text-muted-foreground mt-2">How confident are you with these materials?</p>
+              <h1 className="text-3xl font-bold tracking-tight">Step 2: Confidence Baseline</h1>
+              <p className="text-muted-foreground mt-2">How familiar are you with these materials?</p>
             </div>
 
-            <Card className="rounded-xl  border-primary/10 overflow-hidden glass-card">
-              <CardContent className="p-8 md:p-12 text-center">
-                <div className="max-w-md mx-auto space-y-12">
-                  <div className="space-y-6">
+            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
+              <CardContent className="space-y-12">
+                <div className="max-w-md mx-auto space-y-8">
+                  <div className="space-y-4">
                     <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
                       <span>Beginner</span>
                       <span>Expert</span>
@@ -359,14 +234,14 @@ export default function Upload() {
                     />
                   </div>
 
-                  <div className="relative inline-block">
+                  <div className="relative inline-block w-full text-center">
                     <div className={cn(
                       "text-8xl font-black mb-4 transition-colors",
                       getConfidenceColor(confidence[0])
                     )}>
                       {confidence[0]}%
                     </div>
-                    <p className="text-lg font-bold text-muted-foreground min-h-[3rem]">
+                    <p className="text-lg font-bold text-muted-foreground min-h-[3rem] max-w-sm mx-auto">
                       {getConfidenceMessage(confidence[0])}
                     </p>
                   </div>
@@ -374,21 +249,89 @@ export default function Upload() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between gap-4 pt-12">
-              <Button variant="ghost" className="rounded-full px-8" onClick={() => setStep("upload")}>
+            <div className="flex justify-between items-center pt-8">
+              <Button 
+                variant="ghost" 
+                className="rounded-full px-8 h-12 font-bold" 
+                onClick={() => setWizardStep(1)} 
+                disabled={isProcessing}
+              >
                 Back to Upload
               </Button>
               <Button
                 size="lg"
                 className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                onClick={handleAnalyze}
+                onClick={handlePreprocess}
                 disabled={isProcessing}
               >
                 {isProcessing ? (
+                  <div className="flex items-center gap-2">
+                    <CircleNotch className="w-5 h-5 animate-spin" />
+                    <span>Processing...</span>
+                  </div>
+                ) : (
                   <>
-                    <CircleNotch className="mr-2 w-5 h-5 animate-spin" />
-                    Analyzing Content
+                    Confirm & Preprocess
+                    <Sparkle className="ml-2 w-5 h-5" weight="fill" />
                   </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Neural Analysis */}
+        {wizardStep === 3 && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center">
+              <h1 className="text-3xl font-bold tracking-tight">Step 3: Neural Analysis</h1>
+              <p className="text-muted-foreground mt-2">Knowledge mapping in progress</p>
+            </div>
+
+            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
+              <CardContent className="space-y-12 text-center">
+                <div className="max-w-md mx-auto space-y-8">
+                  {/* Analysis Icon */}
+                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Brain className="w-10 h-10 text-primary" weight="fill" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
+                      <Sparkle weight="fill" />
+                      Baseline: {confidence[0]}%
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-bold">Ready for Deep Analysis</h3>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        Our neural network is ready to analyze your material and generate a custom study plan tailored to your familiarity level.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-between items-center pt-8">
+              <Button 
+                variant="ghost" 
+                className="rounded-full px-8 h-12 font-bold" 
+                onClick={() => setWizardStep(2)} 
+                disabled={isProcessing}
+              >
+                Back to Preprocess
+              </Button>
+              <Button
+                size="lg"
+                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
+                onClick={handleStartAnalysis}
+                disabled={isProcessing || !collectionId}
+              >
+                {isProcessing ? (
+                  <div className="flex items-center gap-2">
+                    <CircleNotch className="w-5 h-5 animate-spin" />
+                    <span>Analyzing...</span>
+                  </div>
                 ) : (
                   <>
                     Start Neural Analysis
@@ -400,60 +343,44 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Step 3: Units */}
-        {step === "units" && (
+        {/* Step 4: Finish */}
+        {wizardStep === 4 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Analysis Results</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Step 4: Analysis Results</h1>
               <p className="text-muted-foreground mt-2">We've identified the following study units from your documents</p>
             </div>
 
-            <div className="grid gap-4">
-              {extractedUnits.map((unit, index) => (
-                <Card key={unit.id} className="rounded-xl border-none shadow-sm hover:shadow-md transition-shadow overflow-hidden group">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                      <div className="flex-1 space-y-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                            {index + 1}
-                          </div>
-                          <h3 className="text-xl font-bold">{unit.title}</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
-                          {unit.description}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {unit.topics.map((topic) => (
-                            <Badge key={topic} variant="secondary" className="rounded-full px-3 py-1">
-                              {topic}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="bg-muted/50 p-4 rounded-2xl min-w-[120px] text-center">
-                        <p className={cn("text-2xl font-black", getConfidenceColor(unit.confidence))}>
-                          {unit.confidence}%
-                        </p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Accuracy</p>
-                      </div>
+            <Card className="rounded-xl p-8 text-center border-none shadow-lg bg-card/50 backdrop-blur-sm">
+              <CardContent className="space-y-6">
+                <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
+                  <Check className="w-12 h-12 text-green-500" weight="bold" />
+                </div>
+                <h3 className="text-xl font-bold">Protocol Ready</h3>
+                <p className="text-muted-foreground">Analysis synchronized with your {confidence[0]}% confidence baseline.</p>
+                
+                <div className="grid gap-4 mt-6">
+                  {extractedUnits.map((unit) => (
+                    <div key={unit.id} className="p-4 rounded-xl bg-muted/50 text-left border border-muted/50 shadow-sm">
+                      <h4 className="font-bold">{unit.title}</h4>
+                      <p className="text-xs text-muted-foreground mt-1">{unit.description}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  ))}
+                </div>
 
-            <div className="flex justify-between gap-4 pt-12">
-              <Button variant="ghost" className="rounded-full px-8" onClick={() => setStep("confidence")}>
-                Go Back
-              </Button>
-              <Button className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20 group" asChild>
-                <a href="/exam">
-                  Begin Study Protocol
-                  <CaretRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </a>
-              </Button>
-            </div>
+                <div className="pt-8">
+                  <Button
+                    size="lg"
+                    className="w-full max-w-sm rounded-full h-14 font-bold shadow-xl shadow-primary/20"
+                    onClick={() => navigate("/exam")}
+                    disabled={!analysisReady}
+                  >
+                    Begin Study Protocol
+                    <Sparkle className="ml-2 w-5 h-5" weight="fill" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

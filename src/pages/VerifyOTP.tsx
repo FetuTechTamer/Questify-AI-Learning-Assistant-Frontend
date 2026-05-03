@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,19 @@ const VerifyOTP = () => {
     const [otp, setOtp] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isResending, setIsResending] = useState(false);
+    const [countdown, setCountdown] = useState(0);
     const { toast } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
     const email = location.state?.email || "";
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (countdown > 0) {
+            timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [countdown]);
 
     const handleVerify = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -47,9 +56,11 @@ const VerifyOTP = () => {
     };
 
     const handleResendOTP = async () => {
+        if (countdown > 0) return;
         setIsResending(true);
         try {
             await authService.resendOtp(email);
+            setCountdown(60); // Start 60s countdown
             toast({
                 title: "OTP resent",
                 description: "Please check your email for the verification code.",
@@ -115,10 +126,16 @@ const VerifyOTP = () => {
                         <button
                             type="button"
                             onClick={handleResendOTP}
-                            disabled={isResending}
-                            className="text-sm text-primary hover:underline disabled:opacity-50"
+                            disabled={isResending || countdown > 0}
+                            className="text-sm text-primary hover:underline disabled:opacity-50 disabled:no-underline"
                         >
-                            {isResending ? "Sending..." : "Resend verification code"}
+                            {isResending ? (
+                                "Sending..."
+                            ) : countdown > 0 ? (
+                                `Resend code in ${countdown}s`
+                            ) : (
+                                "Resend verification code"
+                            )}
                         </button>
                     </div>
                 </form>
