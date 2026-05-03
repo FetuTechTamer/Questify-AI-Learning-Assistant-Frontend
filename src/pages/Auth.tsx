@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import API from "../services/api";
+import { authService } from "../services/authService";
 
 import {
   Brain,
@@ -151,74 +151,47 @@ const Auth = () => {
     try {
       if (isSignUp) {
         // Sign Up - API Call
-        const response = await API.register(name, email, password);
-
-        if (response.success === true) {
-          toast({
-            title: "Verification Required",
-            description: "Please check your email for the OTP verification code.",
-          });
-          navigate("/verify-otp", { state: { email } });
-          resetForm();
-        } else {
-          // Handle specific error messages
-          let errorMsg = response.message || "Registration failed";
-
-          // Check if email already exists
-          if (errorMsg.toLowerCase().includes("already") ||
-            errorMsg.toLowerCase().includes("exists")) {
-            errorMsg = "This email is already registered. Please login instead.";
-            // Switch to login mode
-            setIsSignUp(false);
-            resetForm();
-          }
-
-          setErrors({ form: errorMsg });
-          toast({
-            title: "Registration failed",
-            description: errorMsg,
-            variant: "destructive",
-          });
-        }
+        await authService.register(name, email, password);
+        
+        toast({
+          title: "Verification Required",
+          description: "Please check your email for the OTP verification code.",
+        });
+        navigate("/verify-otp", { state: { email } });
+        resetForm();
       } else {
         // Sign In - API Call
-        const response = await API.login(email, password);
+        const response = await authService.login(email, password);
 
-        if (response.success === true && response.data?.access_token) {
-          localStorage.removeItem("access_token");
-          localStorage.setItem("access_token", response.data.access_token);
+        toast({
+          title: "Welcome back",
+          description: "Let's continue where you left off.",
+        });
 
-          toast({
-            title: "Welcome back",
-            description: "Let's continue where you left off.",
-          });
-
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 100);
-        } else {
-          let errorMsg = response.message || "Invalid email or password";
-
-          if (response.message?.toLowerCase().includes("verify") ||
-            response.message?.toLowerCase().includes("verified") ||
-            response.message?.toLowerCase().includes("otp")) {
-            errorMsg = "Please verify your email first. Check your inbox for OTP.";
-          }
-
-          setErrors({ form: errorMsg });
-          toast({
-            title: "Login failed",
-            description: errorMsg,
-            variant: "destructive",
-          });
-        }
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 100);
       }
     } catch (error: any) {
       console.error("Auth error:", error);
-      setErrors({ form: error.message || "Network error. Please try again." });
+      let errorMsg = error.response?.data?.message || error.response?.data?.detail || error.message || "Network error. Please try again.";
+      
+      if (isSignUp) {
+        if (errorMsg.toLowerCase().includes("already") || errorMsg.toLowerCase().includes("exists")) {
+          errorMsg = "This email is already registered. Please login instead.";
+          setIsSignUp(false);
+          resetForm();
+        }
+      } else {
+        if (errorMsg.toLowerCase().includes("verify") || errorMsg.toLowerCase().includes("verified") || errorMsg.toLowerCase().includes("otp")) {
+          errorMsg = "Please verify your email first. Check your inbox for OTP.";
+        }
+      }
+
+      setErrors({ form: errorMsg });
       toast({
-        title: "Error",
-        description: error.message || "Failed to connect to server",
+        title: isSignUp ? "Registration failed" : "Login failed",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {

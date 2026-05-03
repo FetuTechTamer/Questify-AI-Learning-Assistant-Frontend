@@ -506,32 +506,7 @@ export default function Dashboard() {
     // Implementation would connect to your backend
   };
 
-  const insights = [
-    {
-      title: "Peak Performance",
-      insight: "Your focus peaks between 2-4 PM",
-      metric: "92%",
-      trend: 8,
-      icon: TrendUp,
-      color: "bg-green-500/10 text-green-500"
-    },
-    {
-      title: "Retention Rate",
-      insight: "Spaced repetition is working",
-      metric: "94%",
-      trend: 4,
-      icon: Brain,
-      color: "bg-purple-500/10 text-purple-500"
-    },
-    {
-      title: "Speed Gain",
-      insight: "Problem solving 24% faster",
-      metric: "1.2x",
-      trend: 24,
-      icon: Biohazard,
-      color: "bg-blue-500/10 text-blue-500"
-    },
-  ];
+
 
   return (
     <DashboardLayout title="NeuroLearning Command Center">

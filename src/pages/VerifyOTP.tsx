@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import API from "../services/api";
+import { authService } from "../services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { Brain, CircleNotch, ArrowRight } from "@phosphor-icons/react";
 
@@ -29,24 +29,16 @@ const VerifyOTP = () => {
 
         setIsLoading(true);
         try {
-            const response = await API.verifyOTP(email, otp);
-            if (response.success) {
-                toast({
-                    title: "Account verified!",
-                    description: "You can now login to your account.",
-                });
-                navigate("/auth");
-            } else {
-                toast({
-                    title: "Verification failed",
-                    description: response.message || "Invalid OTP",
-                    variant: "destructive",
-                });
-            }
+            await authService.verify(email, otp);
+            toast({
+                title: "Account verified!",
+                description: "You can now login to your account.",
+            });
+            navigate("/auth");
         } catch (error: any) {
             toast({
-                title: "Error",
-                description: error.message || "Failed to verify OTP",
+                title: "Verification failed",
+                description: error.response?.data?.message || error.response?.data?.detail || error.message || "Invalid OTP",
                 variant: "destructive",
             });
         } finally {
@@ -57,23 +49,15 @@ const VerifyOTP = () => {
     const handleResendOTP = async () => {
         setIsResending(true);
         try {
-            const response = await API.resendOTP(email);
-            if (response.success) {
-                toast({
-                    title: "OTP resent",
-                    description: "Please check your email for the verification code.",
-                });
-            } else {
-                toast({
-                    title: "Failed to resend OTP",
-                    description: response.message,
-                    variant: "destructive",
-                });
-            }
+            await authService.resendOtp(email);
+            toast({
+                title: "OTP resent",
+                description: "Please check your email for the verification code.",
+            });
         } catch (error: any) {
             toast({
-                title: "Error",
-                description: error.message,
+                title: "Failed to resend OTP",
+                description: error.response?.data?.message || error.response?.data?.detail || error.message || "Failed to resend OTP",
                 variant: "destructive",
             });
         } finally {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import API from "@/services/api";
+import { authService } from "@/services/authService";
 
 export interface User {
   id: string;
@@ -37,16 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadUser = async () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token');
       if (token) {
         setSession({ access_token: token });
         try {
-          const profile = await API.getUserProfile();
+          const profile = await authService.getProfile();
           setUser(profile);
           setIsAdmin(profile?.role === 'admin');
         } catch (error) {
           console.error("Failed to load user profile:", error);
-          localStorage.removeItem('token');
+          localStorage.removeItem('access_token');
           setSession(null);
           setUser(null);
         }
@@ -59,14 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const data = await API.login(email, password);
-      // Handle different possible backend token structures
-      const token = data?.access_token || data?.token || (typeof data === 'string' ? data : null);
+      const data = await authService.login(email, password);
+      // authService already stores access_token in localStorage
+      const token = data?.access_token || localStorage.getItem('access_token');
       
       if (token) {
-        localStorage.setItem('token', token);
         setSession({ access_token: token });
-        const profile = await API.getUserProfile();
+        const profile = await authService.getProfile();
         setUser(profile);
         setIsAdmin(profile?.role === 'admin');
       } else {
@@ -81,9 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, fullName?: string) => {
     try {
-      await API.register(fullName || '', email, password);
-      // Auto-login after successful registration
-      return await login(email, password);
+      await authService.register(fullName || '', email, password);
+      // Wait for OTP verification before auto-login, so we don't login here directly.
+      return { error: null };
     } catch (error: any) {
       console.error('Register error:', error);
       return { error };
@@ -91,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    await API.logout();
+    await authService.logout();
     setUser(null);
     setSession(null);
     setIsAdmin(false);
