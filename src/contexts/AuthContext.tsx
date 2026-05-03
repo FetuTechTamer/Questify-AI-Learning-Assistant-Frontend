@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { authService } from "@/services/authService";
 
 export interface User {
-  id: string;
+  user_id: string;
   email: string;
   full_name?: string;
   role?: string;
@@ -18,11 +18,11 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  login: (email: string, password: string) => Promise<{ error: Error | null }>;
-  register: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -60,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       const data = await authService.login(email, password);
-      // authService already stores access_token in localStorage
       const token = data?.access_token || localStorage.getItem('access_token');
       
       if (token) {
@@ -71,26 +70,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         throw new Error('No token received from login');
       }
-      return { error: null };
     } catch (error: any) {
       console.error('Login error:', error);
-      return { error };
+      throw error;
     }
   };
 
   const register = async (email: string, password: string, fullName?: string) => {
     try {
       await authService.register(fullName || '', email, password);
-      // Wait for OTP verification before auto-login, so we don't login here directly.
-      return { error: null };
     } catch (error: any) {
       console.error('Register error:', error);
-      return { error };
+      throw error;
     }
   };
 
   const logout = async () => {
-    await authService.logout();
+    authService.logout();
     setUser(null);
     setSession(null);
     setIsAdmin(false);

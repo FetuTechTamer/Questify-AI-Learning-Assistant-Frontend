@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authService } from "../services/authService";
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   Brain,
@@ -30,6 +31,7 @@ const Auth = () => {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { login: contextLogin, register: contextRegister } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -151,7 +153,7 @@ const Auth = () => {
     try {
       if (isSignUp) {
         // Sign Up - API Call
-        await authService.register(name, email, password);
+        await contextRegister(email, password, name);
         
         toast({
           title: "Verification Required",
@@ -161,7 +163,7 @@ const Auth = () => {
         resetForm();
       } else {
         // Sign In - API Call
-        const response = await authService.login(email, password);
+        await contextLogin(email, password);
 
         toast({
           title: "Welcome back",
