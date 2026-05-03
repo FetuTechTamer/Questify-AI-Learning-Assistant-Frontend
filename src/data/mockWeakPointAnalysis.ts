@@ -217,4 +217,3 @@ export type WeakPointAnalysis = typeof mockWeakPointAnalysis;
 export type QuestionAnalysis = typeof mockWeakPointAnalysis.questionAnalyses[0];
 export type LearningStep = typeof mockWeakPointAnalysis.learningPath[0];
 export type WeakPointActionItem = QuestionAnalysis["nextActions"][0];
-

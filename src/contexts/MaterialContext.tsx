@@ -12,7 +12,7 @@ export interface UploadedFile {
   errorMessage?: string;
 }
 
-interface ExtractedUnit {
+export interface ExtractedUnit {
   id: string;
   title: string;
   description: string;
@@ -34,6 +34,7 @@ interface MaterialContextType {
   removeFile: (id: string) => Promise<void>;
   handlePreprocess: () => Promise<void>;
   handleStartAnalysis: () => Promise<void>;
+  resetProcess: () => void;
 }
 
 const MaterialContext = createContext<MaterialContextType | undefined>(undefined);
@@ -47,7 +48,17 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
   const [analysisReady, setAnalysisReady] = useState(false);
   const [extractedUnits, setExtractedUnits] = useState<ExtractedUnit[]>([]);
 
-  const processFiles = async (newFiles: File[]) => {
+  const resetProcess = useCallback(() => {
+    setFiles([]);
+    setWizardStep(1);
+    setConfidence([50]);
+    setCollectionId(null);
+    setIsProcessing(false);
+    setAnalysisReady(false);
+    setExtractedUnits([]);
+  }, []);
+
+  const processFiles = useCallback(async (newFiles: File[]) => {
     for (const file of newFiles) {
       const tempId = Math.random().toString(36).substr(2, 9);
       const newUploadFile: UploadedFile = {
@@ -75,6 +86,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
           )
         );
       } catch (error: any) {
+        console.error("Upload error:", error);
         const errorMessage = error.response?.data?.message || "Upload failed";
         setFiles((prev) =>
           prev.map((f) =>
@@ -84,23 +96,24 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         toast.error(`Failed to upload ${file.name}: ${errorMessage}`);
       }
     }
-  };
+  }, []);
 
-  const removeFile = async (id: string) => {
-    const fileToRemove = files.find(f => f.id === id);
-    if (fileToRemove && fileToRemove.status === "done") {
-      try {
-        await materialService.delete(id);
-      } catch (error) {
-        console.error("Delete error:", error);
+  const removeFile = useCallback(async (id: string) => {
+    setFiles((prev) => {
+      const fileToRemove = prev.find(f => f.id === id);
+      if (fileToRemove && fileToRemove.status === "done") {
+        materialService.delete(id).catch(console.error);
       }
-    }
-    setFiles((prev) => prev.filter((f) => f.id !== id));
-  };
+      return prev.filter((f) => f.id !== id);
+    });
+  }, []);
 
-  const handlePreprocess = async () => {
+  const preprocessAction = async () => {
     const materialIds = files.filter(f => f.status === "done").map(f => f.id);
-    if (materialIds.length === 0) return;
+    if (materialIds.length === 0) {
+      toast.error("No valid materials to process.");
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -112,18 +125,20 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         toast.success("Preprocessing complete!");
       }
     } catch (error: any) {
+      console.error("Preprocess error:", error);
       toast.error(error.response?.data?.message || "Preprocess failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleStartAnalysis = async () => {
+  const analyzeAction = async () => {
     if (!collectionId) return;
 
     setIsProcessing(true);
     try {
       await materialService.analyze(collectionId, confidence[0]);
+      
       setExtractedUnits([
         {
           id: collectionId,
@@ -137,6 +152,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
       setWizardStep(4);
       toast.success("Neural analysis finished!");
     } catch (error: any) {
+      console.error("Analysis error:", error);
       toast.error(error.response?.data?.message || "Analysis failed");
     } finally {
       setIsProcessing(false);
@@ -157,8 +173,9 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         setConfidence,
         processFiles,
         removeFile,
-        handlePreprocess,
-        handleStartAnalysis,
+        handlePreprocess: preprocessAction,
+        handleStartAnalysis: analyzeAction,
+        resetProcess,
       }}
     >
       {children}
@@ -166,10 +183,10 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useMaterialProcessing() {
+export function useMaterial() {
   const context = useContext(MaterialContext);
   if (!context) {
-    throw new Error("useMaterialProcessing must be used within a MaterialProvider");
+    throw new Error("useMaterial must be used within a MaterialProvider");
   }
   return context;
 }

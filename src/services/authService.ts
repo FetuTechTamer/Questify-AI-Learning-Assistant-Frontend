@@ -49,7 +49,7 @@ export const authService = {
   },
 
   deleteAccount: async () => {
-    const response = await apiClient.delete('/api/auth/user/profile');
+    const response = await apiClient.delete('/api/auth/user');
     return response.data.data;
   },
 

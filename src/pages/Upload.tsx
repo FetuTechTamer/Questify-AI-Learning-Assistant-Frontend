@@ -1,13 +1,13 @@
-import { useState, useCallback } from "react";
-import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle, Brain, ChartBar, WarningCircle } from "@phosphor-icons/react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useCallback } from "react";
+import { Upload as UploadIcon, FileText, X, Check, CircleNotch, CaretRight, Sparkle, Brain, WarningCircle } from "@phosphor-icons/react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
-import { useMaterialProcessing } from "../contexts/MaterialContext";
+import { useMaterial } from "@/contexts/MaterialContext";
 import { useNavigate } from "react-router-dom";
 
 const formatFileSize = (bytes: number): string => {
@@ -45,14 +45,13 @@ export default function Upload() {
     removeFile,
     handlePreprocess,
     handleStartAnalysis,
-  } = useMaterialProcessing();
-
-  const [isDragOver, setIsDragOver] = useState(false);
+    resetProcess,
+  } = useMaterial();
+  
   const navigate = useNavigate();
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
     const droppedFiles = Array.from(e.dataTransfer.files);
     processFiles(droppedFiles);
   }, [processFiles]);
@@ -61,6 +60,13 @@ export default function Upload() {
     if (e.target.files) {
       processFiles(Array.from(e.target.files));
     }
+  };
+
+  const handleFinish = () => {
+    // Reset the context state so the next visit starts at Step 1
+    resetProcess();
+    // Navigate to the exam room
+    navigate("/exam");
   };
 
   return (
@@ -104,24 +110,17 @@ export default function Upload() {
 
             <Card
               className={cn(
-                "border-2 border-dashed transition-all duration-300 rounded-xl",
-                isDragOver ? "border-primary bg-primary/5 scale-[1.01]" : "border-muted hover:border-primary/50"
+                "border-2 border-dashed transition-all duration-300 rounded-xl border-muted hover:border-primary/50"
               )}
-              onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={onDrop}
             >
               <CardContent className="p-8 md:p-12">
                 <div className="flex flex-col items-center text-center">
-                  <div className={cn(
-                    "w-20 h-20 rounded-3xl flex items-center justify-center mb-6 transition-colors",
-                    isDragOver ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                  )}>
+                  <div className="w-20 h-20 rounded-3xl bg-muted text-muted-foreground flex items-center justify-center mb-6 transition-colors">
                     <UploadIcon className="w-10 h-10" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2">
-                    {isDragOver ? "Drop files here" : "Drag & drop files to upload"}
-                  </h3>
+                  <h3 className="text-xl font-bold mb-2">Drag & drop files to upload</h3>
                   <p className="text-sm text-muted-foreground mb-8">
                     Support for PDF, DOCX, PPTX, and TXT files
                   </p>
@@ -272,7 +271,7 @@ export default function Upload() {
                 ) : (
                   <>
                     Confirm & Preprocess
-                    <Sparkle className="ml-2 w-5 h-5" weight="fill" />
+                    <CaretRight className="ml-2 w-5 h-5" />
                   </>
                 )}
               </Button>
@@ -291,7 +290,6 @@ export default function Upload() {
             <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
               <CardContent className="space-y-12 text-center">
                 <div className="max-w-md mx-auto space-y-8">
-                  {/* Analysis Icon */}
                   <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Brain className="w-10 h-10 text-primary" weight="fill" />
                   </div>
@@ -347,11 +345,11 @@ export default function Upload() {
         {wizardStep === 4 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Step 4: Analysis Results</h1>
-              <p className="text-muted-foreground mt-2">We've identified the following study units from your documents</p>
+              <h1 className="text-3xl font-bold tracking-tight">Step 4: Analysis Complete</h1>
+              <p className="text-muted-foreground mt-2">Your personalized study plan is ready</p>
             </div>
 
-            <Card className="rounded-xl p-8 text-center border-none shadow-lg bg-card/50 backdrop-blur-sm">
+            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm text-center">
               <CardContent className="space-y-6">
                 <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
                   <Check className="w-12 h-12 text-green-500" weight="bold" />
@@ -361,7 +359,7 @@ export default function Upload() {
                 
                 <div className="grid gap-4 mt-6">
                   {extractedUnits.map((unit) => (
-                    <div key={unit.id} className="p-4 rounded-xl bg-muted/50 text-left border border-muted/50 shadow-sm">
+                    <div key={unit.id} className="p-4 rounded-xl bg-muted/50 text-left">
                       <h4 className="font-bold">{unit.title}</h4>
                       <p className="text-xs text-muted-foreground mt-1">{unit.description}</p>
                     </div>
@@ -372,7 +370,7 @@ export default function Upload() {
                   <Button
                     size="lg"
                     className="w-full max-w-sm rounded-full h-14 font-bold shadow-xl shadow-primary/20"
-                    onClick={() => navigate("/exam")}
+                    onClick={handleFinish}
                     disabled={!analysisReady}
                   >
                     Begin Study Protocol
