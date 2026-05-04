@@ -59,6 +59,7 @@ export default function Upload() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       processFiles(Array.from(e.target.files));
+      e.target.value = ""; // reset so user can select more files
     }
   };
 
@@ -198,11 +199,20 @@ export default function Upload() {
               <Button
                 size="lg"
                 className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                disabled={files.length === 0 || files.some(f => f.status === "uploading") || !files.some(f => f.status === "done")}
-                onClick={() => setWizardStep(2)}
+                disabled={files.length === 0 || files.some(f => f.status === "uploading") || !files.some(f => f.status === "done") || isProcessing}
+                onClick={handlePreprocess}
               >
-                Preprocess
-                <CaretRight className="ml-2 w-5 h-5" />
+                {isProcessing ? (
+                  <>
+                    <CircleNotch className="mr-2 w-5 h-5 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    Preprocess
+                    <CaretRight className="ml-2 w-5 h-5" />
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -212,7 +222,7 @@ export default function Upload() {
         {wizardStep === 2 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Step 2: Confidence Baseline</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Confidence Baseline</h1>
               <p className="text-muted-foreground mt-2">How familiar are you with these materials?</p>
             </div>
 
@@ -285,26 +295,41 @@ export default function Upload() {
         {wizardStep === 3 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Step 3: Analysis Results</h1>
+              <h1 className="text-3xl font-bold tracking-tight">Analysis Results</h1>
               <p className="text-muted-foreground mt-2">We've identified the following study units from your documents</p>
             </div>
 
-            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm text-center">
-              <CardContent className="space-y-6">
-                <div className="w-24 h-24 bg-green-500/10 rounded-full flex items-center justify-center mx-auto">
-                  <Check className="w-12 h-12 text-green-500" weight="bold" />
-                </div>
-                <h3 className="text-xl font-bold">Protocol Ready</h3>
-                <p className="text-muted-foreground">Analysis synchronized with your {confidence[0]}% confidence baseline.</p>
-
-                <div className="grid gap-4 mt-6">
-                  {extractedUnits.map((unit) => (
-                    <div key={unit.id} className="p-4 rounded-xl bg-muted/50 text-left">
-                      <h4 className="font-bold">{unit.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{unit.description}</p>
-                    </div>
-                  ))}
-                </div>
+            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
+              <CardContent className="space-y-4">
+                {extractedUnits.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No chapters were extracted. Please try again.</p>
+                ) : (
+                  <ol className="space-y-4">
+                    {extractedUnits.map((unit) => (
+                      <li key={unit.id} className="flex gap-4 p-4 rounded-xl bg-muted/50 text-left">
+                        <span className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/15 text-primary text-sm font-black flex items-center justify-center">
+                          {unit.id}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-sm leading-snug">{unit.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{unit.description}</p>
+                          {unit.topics && unit.topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {unit.topics.map((topic) => (
+                                <span
+                                  key={topic}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20"
+                                >
+                                  {topic}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </CardContent>
             </Card>
 
