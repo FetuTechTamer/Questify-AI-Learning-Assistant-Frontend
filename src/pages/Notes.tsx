@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { noteMethods } from "@/data/mockData";
 import { api } from "@/services/api";
 import { materialService, Material } from "@/services/materialService";
+import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 import NoteRoom from "./NoteRoom";
 import { mockTopics } from "@/data/mockTopics";
@@ -211,6 +212,7 @@ function NotesList({ method, materialId, refreshTrigger }: NotesListProps) {
 
 // ─── Main Notes Page ─────────────────────────────────────────────────────────
 export default function Notes() {
+  const { files } = useMaterial();
   // Material selection state
   const [materials, setMaterials] = useState<Material[]>([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
@@ -241,7 +243,24 @@ export default function Notes() {
           console.error("Error Object:", error);
         }
         console.error("-----------------------------------------");
-        toast.error("Failed to load your materials. Please try again.");
+
+        // Fallback to session files
+        const fallbackMaterials: Material[] = files
+          .filter(f => f.status === "done")
+          .map(f => ({
+            id: f.id,
+            title: f.name,
+            name: f.name,
+            description: "Session Upload",
+            created_at: new Date().toISOString()
+          }));
+
+        if (fallbackMaterials.length > 0) {
+          setMaterials(fallbackMaterials);
+          toast.info("Unable to load all materials from server. Showing your uploaded files from this session.");
+        } else {
+          toast.error("Failed to load your materials. Please try again.");
+        }
       } finally {
         setIsLoadingMaterials(false);
       }

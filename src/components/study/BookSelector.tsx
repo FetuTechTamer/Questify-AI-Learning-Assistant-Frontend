@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { materialService, Material } from "@/services/materialService";
 import { api } from "@/services/api";
+import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 
 interface BookSelectorProps {
@@ -13,6 +14,7 @@ interface BookSelectorProps {
 }
 
 export function BookSelector({ onSelect }: BookSelectorProps) {
+    const { files } = useMaterial();
     const [materials, setMaterials] = useState<Material[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -31,7 +33,24 @@ export function BookSelector({ onSelect }: BookSelectorProps) {
                     console.error("Error Object:", error);
                 }
                 console.error("-------------------------------------------");
-                toast.error("Failed to load materials");
+
+                // Fallback to session files
+                const fallbackMaterials: Material[] = files
+                    .filter(f => f.status === "done")
+                    .map(f => ({
+                        id: f.id,
+                        title: f.name,
+                        name: f.name,
+                        description: "Session Upload",
+                        created_at: new Date().toISOString()
+                    }));
+
+                if (fallbackMaterials.length > 0) {
+                    setMaterials(fallbackMaterials);
+                    toast.info("Unable to load all materials from server. Showing your uploaded files from this session.");
+                } else {
+                    toast.error("Failed to load materials");
+                }
             } finally {
                 setIsLoading(false);
             }

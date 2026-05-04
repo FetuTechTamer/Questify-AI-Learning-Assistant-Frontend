@@ -109,15 +109,29 @@ export default function Settings() {
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
+      console.log('[handleDeleteAccount] Initiating account deletion...');
       await authService.deleteAccount();
-      logout();
-      toast.success("Account permanently deleted");
+      
+      // Clear all local data as requested
+      localStorage.clear();
+      
+      // Update auth state
+      await logout();
+      
+      toast.success("Account permanently deleted. We're sorry to see you go.");
       navigate("/auth");
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        toast.error("Account deletion endpoint not found.");
+      console.error("[handleDeleteAccount] Catch Block Diagnostic:");
+      console.error("- Error Object:", error);
+      
+      if (!error.response || error.response.status === 500) {
+        // CORS (no response) or Server Error (500)
+        console.error("- Diagnosis: Backend endpoint is likely not ready or misconfigured (CORS/500).");
+        toast.error("The backend account deletion endpoint is not ready yet. Please contact support.");
       } else {
-        toast.error(error.response?.data?.message || "Failed to delete account");
+        const errorMessage = error.response?.data?.message || "Failed to delete account. Please try again later.";
+        console.error("- Diagnosis: Backend responded with error:", errorMessage);
+        toast.error(errorMessage);
       }
     } finally {
       setIsDeleting(false);
@@ -295,10 +309,21 @@ export default function Settings() {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                          onClick={handleDeleteAccount}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={(e) => {
+                            e.preventDefault(); // Prevent dialog from closing automatically
+                            handleDeleteAccount();
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[140px]"
+                          disabled={isDeleting}
                         >
-                          {isDeleting ? "Deleting..." : "Delete Permanently"}
+                          {isDeleting ? (
+                            <div className="flex items-center gap-2">
+                              <CircleNotch className="w-4 h-4 animate-spin" />
+                              <span>Deleting...</span>
+                            </div>
+                          ) : (
+                            "Delete Permanently"
+                          )}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

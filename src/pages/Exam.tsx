@@ -28,9 +28,11 @@ import { questionTypes } from "@/data/mockData";
 import ExamRoom from "./ExamRoom";
 import { api, ExamQuestion, SubmitResponse } from "@/services/api";
 import { materialService, Material } from "@/services/materialService";
+import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 
 export default function Exam() {
+  const { files } = useMaterial();
   const [step, setStep] = useState<"configure" | "exam">("configure");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
@@ -70,7 +72,24 @@ export default function Exam() {
           console.error("Error Object:", error);
         }
         console.error("----------------------------------------");
-        toast.error("Failed to load your materials. Please try again.");
+
+        // Fallback to session files
+        const fallbackMaterials: Material[] = files
+          .filter(f => f.status === "done")
+          .map(f => ({
+            id: f.id,
+            title: f.name,
+            name: f.name,
+            description: "Session Upload",
+            created_at: new Date().toISOString()
+          }));
+
+        if (fallbackMaterials.length > 0) {
+          setMaterials(fallbackMaterials);
+          toast.info("Unable to load all materials from server. Showing your uploaded files from this session.");
+        } else {
+          toast.error("Failed to load your materials. Please try again.");
+        }
       } finally {
         setIsLoadingMaterials(false);
       }
