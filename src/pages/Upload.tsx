@@ -47,7 +47,7 @@ export default function Upload() {
     handleStartAnalysis,
     resetProcess,
   } = useMaterial();
-  
+
   const navigate = useNavigate();
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -74,7 +74,7 @@ export default function Upload() {
       <div className="container py-6 max-w-5xl">
         {/* Progress Steps */}
         <div className="flex items-center justify-center gap-4 mb-8">
-          {["Upload", "Preprocess", "Analysis", "Study"].map((label, index) => (
+          {["Upload", "Analyze", "Review"].map((label, index) => (
             <div key={label} className="flex items-center">
               <div className="flex items-center gap-2">
                 <div
@@ -93,7 +93,7 @@ export default function Upload() {
                   {label}
                 </span>
               </div>
-              {index < 3 && (
+              {index < 2 && (
                 <div className="h-[2px] w-8 bg-muted mx-4" />
               )}
             </div>
@@ -248,11 +248,11 @@ export default function Upload() {
               </CardContent>
             </Card>
 
-            <div className="flex justify-between items-center pt-8">
-              <Button 
-                variant="ghost" 
-                className="rounded-full px-8 h-12 font-bold" 
-                onClick={() => setWizardStep(1)} 
+            <div className="flex justify-between items-center bg-card p-4 rounded-xl border mt-8">
+              <Button
+                variant="ghost"
+                className="rounded-full px-8 h-12 font-bold"
+                onClick={() => setWizardStep(1)}
                 disabled={isProcessing}
               >
                 Back to Upload
@@ -260,70 +260,8 @@ export default function Upload() {
               <Button
                 size="lg"
                 className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
-                onClick={handlePreprocess}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <CircleNotch className="w-5 h-5 animate-spin" />
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  <>
-                    Confirm & Preprocess
-                    <CaretRight className="ml-2 w-5 h-5" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Neural Analysis */}
-        {wizardStep === 3 && (
-          <div className="space-y-8 animate-fade-in">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Step 3: Neural Analysis</h1>
-              <p className="text-muted-foreground mt-2">Knowledge mapping in progress</p>
-            </div>
-
-            <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm">
-              <CardContent className="space-y-12 text-center">
-                <div className="max-w-md mx-auto space-y-8">
-                  <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Brain className="w-10 h-10 text-primary" weight="fill" />
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest">
-                      <Sparkle weight="fill" />
-                      Baseline: {confidence[0]}%
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="text-2xl font-bold">Ready for Deep Analysis</h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">
-                        Our neural network is ready to analyze your material and generate a custom study plan tailored to your familiarity level.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-between items-center pt-8">
-              <Button 
-                variant="ghost" 
-                className="rounded-full px-8 h-12 font-bold" 
-                onClick={() => setWizardStep(2)} 
-                disabled={isProcessing}
-              >
-                Back to Preprocess
-              </Button>
-              <Button
-                size="lg"
-                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
                 onClick={handleStartAnalysis}
-                disabled={isProcessing || !collectionId}
+                disabled={isProcessing}
               >
                 {isProcessing ? (
                   <div className="flex items-center gap-2">
@@ -341,12 +279,14 @@ export default function Upload() {
           </div>
         )}
 
-        {/* Step 4: Finish */}
-        {wizardStep === 4 && (
+
+
+        {/* Step 3: Study */}
+        {wizardStep === 3 && (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center">
-              <h1 className="text-3xl font-bold tracking-tight">Step 4: Analysis Complete</h1>
-              <p className="text-muted-foreground mt-2">Your personalized study plan is ready</p>
+              <h1 className="text-3xl font-bold tracking-tight">Step 3: Analysis Results</h1>
+              <p className="text-muted-foreground mt-2">We've identified the following study units from your documents</p>
             </div>
 
             <Card className="rounded-xl p-8 md:p-12 border-none shadow-lg bg-card/50 backdrop-blur-sm text-center">
@@ -356,7 +296,7 @@ export default function Upload() {
                 </div>
                 <h3 className="text-xl font-bold">Protocol Ready</h3>
                 <p className="text-muted-foreground">Analysis synchronized with your {confidence[0]}% confidence baseline.</p>
-                
+
                 <div className="grid gap-4 mt-6">
                   {extractedUnits.map((unit) => (
                     <div key={unit.id} className="p-4 rounded-xl bg-muted/50 text-left">
@@ -365,20 +305,27 @@ export default function Upload() {
                     </div>
                   ))}
                 </div>
-
-                <div className="pt-8">
-                  <Button
-                    size="lg"
-                    className="w-full max-w-sm rounded-full h-14 font-bold shadow-xl shadow-primary/20"
-                    onClick={handleFinish}
-                    disabled={!analysisReady}
-                  >
-                    Begin Study Protocol
-                    <Sparkle className="ml-2 w-5 h-5" weight="fill" />
-                  </Button>
-                </div>
               </CardContent>
             </Card>
+
+            <div className="flex justify-between items-center bg-card p-4 rounded-xl border mt-8">
+              <Button
+                variant="ghost"
+                className="rounded-full px-8 h-12 font-bold"
+                onClick={() => setWizardStep(2)}
+              >
+                Back to Analysis
+              </Button>
+              <Button
+                size="lg"
+                className="rounded-full px-12 h-14 font-bold shadow-xl shadow-primary/20"
+                onClick={handleFinish}
+                disabled={!analysisReady}
+              >
+                Begin Study Protocol
+                <Sparkle className="ml-2 w-5 h-5" weight="fill" />
+              </Button>
+            </div>
           </div>
         )}
       </div>

@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { PDFViewer } from "@/components/study/PDFViewer";
 import { Badge } from "@/components/ui/badge";
+import { api } from "@/services/api";
+import { toast } from "sonner";
 
 type InteractionState = 'AI_ASKING' | 'USER_ANSWERING' | 'AI_EVALUATING';
 
@@ -22,10 +24,11 @@ interface FeynmanMethodProps {
     chapterId: string;
     courseId: string;
     bookFilename?: string;
+    materialId?: string; // New API prop
     onBack: () => void;
 }
 
-export function FeynmanMethod({ chapterId, courseId, bookFilename, onBack }: FeynmanMethodProps) {
+export function FeynmanMethod({ chapterId, courseId, bookFilename, materialId, onBack }: FeynmanMethodProps) {
     const [interactionState, setInteractionState] = useState<InteractionState>('AI_ASKING');
     const [userInput, setUserInput] = useState("");
     const [chatHistory, setChatHistory] = useState<Array<{ sender: 'ai' | 'user', text: string, type?: 'critique' | 'question' }>>([
@@ -38,33 +41,85 @@ export function FeynmanMethod({ chapterId, courseId, bookFilename, onBack }: Fey
     const [isSourceVisible, setIsSourceVisible] = useState(true);
     const [lastCritique, setLastCritique] = useState<string | null>(null);
     const [showFeedback, setShowFeedback] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!materialId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchFeynmanData = async () => {
+            try {
+                const data = await api.getFeynmanData(materialId);
+                if (data && data.last_explanation) {
+                    setChatHistory(prev => [
+                        ...prev,
+                        { sender: 'user', text: data.last_explanation },
+                        { sender: 'ai', text: data.feedback || "I've reviewed your last explanation.", type: 'critique' }
+                    ]);
+                    if (data.feedback) {
+                        setLastCritique(data.feedback);
+                        setShowFeedback(true);
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                // toast.error("Failed to load previous data");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchFeynmanData();
+    }, [materialId]);
 
     // Mock AI Logic
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!userInput.trim()) return;
 
+        const currentInput = userInput;
+        
         // 1. Add User Answer
-        const newHistory = [...chatHistory, { sender: 'user' as const, text: userInput }];
+        const newHistory = [...chatHistory, { sender: 'user' as const, text: currentInput }];
         setChatHistory(newHistory);
         setUserInput("");
         setInteractionState('AI_EVALUATING');
 
-        // 2. Simulate AI Analysis & Response
-        setTimeout(() => {
-            const critique = "That's partially correct. You mentioned the core concept, but you missed *why* it works in this specific case. \n\nCheck page 5 of the PDF - specifically the section on 'Memory Allocation'. \n\nTry to explain it again, focusing on that aspect.";
-            const followUp = "Good start! But can you elaborate on how this relates to performance?";
+        // 2. API Call
+        if (materialId) {
+            try {
+                const response = await api.submitFeynman({ material_id: materialId, explanation: currentInput });
+                
+                const critique = response.feedback || "That's a good attempt. Let's dig deeper.";
+                const followUp = "Can you expand on that?"; // Backend might just give feedback
 
-            setLastCritique(critique);
-            setShowFeedback(true);
+                setLastCritique(critique);
+                setShowFeedback(true);
 
-            setChatHistory(prev => [...prev, {
-                sender: 'ai',
-                text: followUp,
-                type: 'question'
-            }]);
-
-            setInteractionState('USER_ANSWERING');
-        }, 2000);
+                setChatHistory(prev => [...prev, {
+                    sender: 'ai',
+                    text: critique + "\n\n" + followUp,
+                    type: 'critique'
+                }]);
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to submit explanation");
+                setChatHistory(prev => [...prev, { sender: 'ai', text: "Sorry, I had trouble processing that. Can you try again?", type: 'question' }]);
+            }
+        } else {
+            // Mock fallback if no materialId
+            setTimeout(() => {
+                const critique = "That's partially correct. You mentioned the core concept, but you missed *why* it works in this specific case.";
+                const followUp = "Good start! But can you elaborate on how this relates to performance?";
+                
+                setLastCritique(critique);
+                setShowFeedback(true);
+                setChatHistory(prev => [...prev, { sender: 'ai', text: followUp, type: 'question' }]);
+            }, 1000);
+        }
+        
+        setInteractionState('USER_ANSWERING');
     };
 
     const startSession = () => {

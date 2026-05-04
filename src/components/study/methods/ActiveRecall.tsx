@@ -7,9 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { MOCK_FLASHCARDS } from "@/data/mockFlashcards"; // Reusing for content
+import { MOCK_FLASHCARDS } from "@/data/mockFlashcards"; // Reusing for content fallback
+import { api } from "@/services/api";
+import { toast } from "sonner";
 
-export function ActiveRecall({ onBack, bookFilename }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function ActiveRecall({ onBack, bookFilename, materialId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; materialId?: string }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAnswerVisible, setIsAnswerVisible] = useState(false);
     const [score, setScore] = useState({ correct: 0, total: 0 });
@@ -17,15 +19,49 @@ export function ActiveRecall({ onBack, bookFilename }: { onBack: () => void; boo
     const [showAnalysis, setShowAnalysis] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const questions = MOCK_FLASHCARDS;
-    const currentQ = questions[currentIndex];
-    const isComplete = currentIndex >= questions.length;
+    const [questions, setQuestions] = useState<any[]>(MOCK_FLASHCARDS);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleNext = (correct: boolean) => {
+    useEffect(() => {
+        if (!materialId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchQuestions = async () => {
+            try {
+                const data = await api.getActiveRecallData(materialId);
+                if (data && data.questions && data.questions.length > 0) {
+                    setQuestions(data.questions);
+                }
+            } catch (err) {
+                console.error("Failed to load active recall questions", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchQuestions();
+    }, [materialId]);
+
+    const currentQ = questions[currentIndex];
+    const isComplete = currentIndex >= questions.length && questions.length > 0;
+
+    const handleNext = async (correct: boolean) => {
         setScore(prev => ({
             correct: prev.correct + (correct ? 1 : 0),
             total: prev.total + 1
         }));
+
+        if (materialId && currentQ) {
+            try {
+                await api.saveActiveRecallResult({ material_id: materialId, question_id: currentQ.id, result: correct });
+            } catch (err) {
+                console.error("Failed to save result", err);
+                toast.error("Failed to save progress");
+            }
+        }
+
         setIsAnswerVisible(false);
         setShowAnalysis(false);
         setLastAnalysis(null);

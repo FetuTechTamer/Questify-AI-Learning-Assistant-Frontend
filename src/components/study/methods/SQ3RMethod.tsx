@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/services/api";
+import { toast } from "sonner";
 
-export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function SQ3RMethod({ onBack, chapterId, materialId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; materialId?: string }) {
     const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
     const STEPS = [
         { id: 'survey', label: 'Survey', icon: MagnifyingGlass, desc: "Skim headings and summaries." },
@@ -17,17 +19,54 @@ export function SQ3RMethod({ onBack, chapterId }: { onBack: () => void; bookFile
     ];
 
     // Default content for SQ3R when no real data is available
-    const content = {
+    const [content, setContent] = useState<any>({
         sections: [
             { title: 'Introduction', content: 'This section provides an overview of the core concepts.' },
             { title: 'Theoretical Framework', content: 'Explaining the underlying principles and models.' },
             { title: 'Practical Application', content: 'Real-world examples and use cases.' },
             { title: 'Optimization Strategies', content: 'How to improve performance and efficiency.' }
         ]
-    };
+    });
+    const [isLoading, setIsLoading] = useState(true);
 
-    const handleNext = () => {
-        if (step < 4) setStep(prev => (prev + 1) as any);
+    useEffect(() => {
+        if (!materialId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchData = async () => {
+            try {
+                const data = await api.getSQ3RData(materialId);
+                if (data && data.sections && data.sections.length > 0) {
+                    setContent(data);
+                }
+                if (data && data.progress && data.progress.step) {
+                    setStep(data.progress.step);
+                }
+            } catch (err) {
+                console.error(err);
+                // toast.error("Failed to load SQ3R data");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [materialId]);
+
+    const handleNext = async () => {
+        const nextStep = (step + 1) as 0 | 1 | 2 | 3 | 4;
+        if (step < 4) {
+            setStep(nextStep);
+            if (materialId) {
+                try {
+                    await api.saveSQ3RProgress({ material_id: materialId, step: STEPS[nextStep].id, data: {} });
+                } catch (err) {
+                    console.error("Failed to save progress", err);
+                }
+            }
+        }
     };
 
     return (

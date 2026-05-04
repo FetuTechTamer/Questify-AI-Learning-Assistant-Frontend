@@ -7,19 +7,61 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import { api } from "@/services/api";
+import { toast } from "sonner";
 
-export function LeitnerSystem({ onBack }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function LeitnerSystem({ onBack, materialId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; materialId?: string }) {
     const [cards, setCards] = useState<Flashcard[]>(MOCK_FLASHCARDS);
     const [currentBox, setCurrentBox] = useState<number>(1);
     const [activeCardIndex, setActiveCardIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!materialId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchState = async () => {
+            try {
+                const state = await api.getLeitnerState(materialId);
+                if (state && state.boxes) {
+                    // Flatten boxes into cards array
+                    const flattenedCards: Flashcard[] = [];
+                    state.boxes.forEach((box: any) => {
+                        if (box.cards) {
+                            box.cards.forEach((card: any) => {
+                                flattenedCards.push({
+                                    id: card.id,
+                                    topic: card.topic || "General",
+                                    question: card.question,
+                                    answer: card.answer,
+                                    box: box.level
+                                });
+                            });
+                        }
+                    });
+                    if (flattenedCards.length > 0) {
+                        setCards(flattenedCards);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to load Leitner state", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchState();
+    }, [materialId]);
 
     // Filter cards by current box for the active session
     const boxCards = cards.filter(c => c.box === currentBox);
     const activeCard = boxCards[activeCardIndex];
     const isSessionComplete = activeCardIndex >= boxCards.length;
 
-    const handleRate = (correct: boolean) => {
+    const handleRate = async (correct: boolean) => {
         if (!activeCard) return;
 
         // Logic: Correct -> Box + 1, Incorrect -> Box 1
@@ -28,6 +70,15 @@ export function LeitnerSystem({ onBack }: { onBack: () => void; bookFilename?: s
         setCards(prev => prev.map(c =>
             c.id === activeCard.id ? { ...c, box: newBox as 1 | 2 | 3 | 4 | 5 } : c
         ));
+
+        if (materialId) {
+            try {
+                await api.updateLeitnerProgress({ material_id: materialId, card_id: activeCard.id, success: correct });
+            } catch (err) {
+                console.error("Failed to update card progress", err);
+                toast.error("Failed to sync progress");
+            }
+        }
 
         setIsFlipped(false);
         setTimeout(() => {

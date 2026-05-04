@@ -109,6 +109,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const preprocessAction = async () => {
+    // Legacy: no longer called from UI, kept for API compatibility
     const materialIds = files.filter(f => f.status === "done").map(f => f.id);
     if (materialIds.length === 0) {
       toast.error("No valid materials to process.");
@@ -121,7 +122,6 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
       if (response && response.collection_id) {
         setCollectionId(response.collection_id);
         localStorage.setItem("active_collection_id", response.collection_id);
-        setWizardStep(3);
         toast.success("Preprocessing complete!");
       }
     } catch (error: any) {
@@ -133,15 +133,35 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
   };
 
   const analyzeAction = async () => {
-    if (!collectionId) return;
-
     setIsProcessing(true);
     try {
-      await materialService.analyze(collectionId, confidence[0]);
-      
+      // Step 1: Preprocess if no collectionId yet
+      let activeCollectionId = collectionId;
+      if (!activeCollectionId) {
+        const materialIds = files.filter(f => f.status === "done").map(f => f.id);
+        if (materialIds.length === 0) {
+          toast.error("No valid materials to process.");
+          setIsProcessing(false);
+          return;
+        }
+        const response = await materialService.preprocess(materialIds);
+        if (response && response.collection_id) {
+          activeCollectionId = response.collection_id;
+          setCollectionId(activeCollectionId);
+          localStorage.setItem("active_collection_id", activeCollectionId);
+        } else {
+          toast.error("Preprocessing failed. Please try again.");
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Step 2: Analyze
+      await materialService.analyze(activeCollectionId, confidence[0]);
+
       setExtractedUnits([
         {
-          id: collectionId,
+          id: activeCollectionId,
           title: "Synthesized Collection",
           description: "Your materials have been analyzed and mapped.",
           topics: ["Core Concepts", "Key Takeaways"],
@@ -149,7 +169,7 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         }
       ]);
       setAnalysisReady(true);
-      setWizardStep(4);
+      setWizardStep(3);
       toast.success("Neural analysis finished!");
     } catch (error: any) {
       console.error("Analysis error:", error);

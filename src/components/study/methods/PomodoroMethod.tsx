@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { PDFViewer } from "@/components/study/PDFViewer";
+import { api } from "@/services/api";
+import { toast } from "sonner";
 
 // --- Types ---
 type TimerState = 'IDLE' | 'RUNNING' | 'PAUSED' | 'BREAK';
@@ -15,10 +17,11 @@ interface PomodoroMethodProps {
     chapterId: string;
     courseId: string;
     bookFilename?: string; // New prop
+    materialId?: string; // ID for API
     onBack: () => void;
 }
 
-export function PomodoroMethod({ chapterId, courseId, bookFilename, onBack }: PomodoroMethodProps) {
+export function PomodoroMethod({ chapterId, courseId, bookFilename, materialId, onBack }: PomodoroMethodProps) {
     // Timer State
     const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes
     const [timerState, setTimerState] = useState<TimerState>('IDLE');
@@ -28,6 +31,31 @@ export function PomodoroMethod({ chapterId, courseId, bookFilename, onBack }: Po
 
     // Content State
     const [highlights, setHighlights] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // --- API Logic ---
+    useEffect(() => {
+        if (!materialId) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchStats = async () => {
+            try {
+                const stats = await api.getPomodoroStats(materialId);
+                if (stats && stats.completed_sessions) {
+                    setCycleCount(stats.completed_sessions);
+                }
+            } catch (err) {
+                console.error("Failed to fetch Pomodoro stats", err);
+                toast.error("Failed to load Pomodoro stats");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, [materialId]);
 
     // --- Timer Logic ---
     useEffect(() => {
@@ -44,12 +72,22 @@ export function PomodoroMethod({ chapterId, courseId, bookFilename, onBack }: Po
         return () => clearInterval(interval);
     }, [timerState, timeLeft]);
 
-    const handleTimerComplete = () => {
+    const handleTimerComplete = async () => {
         if (timerState === 'RUNNING') {
             setCycleCount(c => c + 1);
             setTimerState('BREAK');
             setTimeLeft(5 * 60); // 5 min break
             new Audio('/sounds/bell.mp3').play().catch(() => { }); // Mock sound
+
+            if (materialId) {
+                try {
+                    await api.recordPomodoro({ material_id: materialId, duration: 25, completed: true });
+                    toast.success("Pomodoro session recorded!");
+                } catch (err) {
+                    console.error("Failed to save pomodoro", err);
+                    toast.error("Failed to save session");
+                }
+            }
         } else {
             setTimerState('IDLE');
             setTimeLeft(25 * 60);
