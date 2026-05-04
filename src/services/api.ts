@@ -36,7 +36,7 @@ export interface SubmitResponse {
 export const api = {
   // Materials
   getMaterials: async (): Promise<Material[]> => {
-    const response = await apiClient.get('/api/material');
+    const response = await apiClient.get('/api/material/');
     // Assuming backend returns { data: [...] } or just [...]
     return response.data.data || response.data;
   },

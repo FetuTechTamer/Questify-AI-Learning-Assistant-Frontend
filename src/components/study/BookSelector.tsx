@@ -21,8 +21,16 @@ export function BookSelector({ onSelect }: BookSelectorProps) {
             try {
                 const data = await materialService.getMaterials();
                 setMaterials(data);
-            } catch (error) {
-                console.error("Failed to fetch materials:", error);
+            } catch (error: any) {
+                console.error("--- Material Fetch Error (BookSelector) ---");
+                console.error("URL: /api/material/");
+                if (error.response) {
+                    console.error("Status Code:", error.response.status);
+                    console.error("Response Text:", JSON.stringify(error.response.data));
+                } else {
+                    console.error("Error Object:", error);
+                }
+                console.error("-------------------------------------------");
                 toast.error("Failed to load materials");
             } finally {
                 setIsLoading(false);

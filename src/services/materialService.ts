@@ -130,26 +130,14 @@ export const materialService = {
   },
 
   getMaterials: async (): Promise<Material[]> => {
-    console.log('Fetching materials list from /api/material');
+    console.log('Fetching materials list from /api/material/');
     try {
-      // Try singular without slash first
-      const response = await apiClient.get('/api/material');
-      console.log('Materials fetch success (singular):', response.data);
+      // Calling with exact trailing slash as required by backend
+      const response = await apiClient.get('/api/material/');
+      console.log('Materials fetch success:', response.data);
       return response.data.data || response.data;
     } catch (error: any) {
-      // If 404 or other error, try with trailing slash as requested
-      if (error.response?.status === 404) {
-        console.log('Singular /api/material failed (404), trying /api/material/');
-        try {
-          const responseSlash = await apiClient.get('/api/material/');
-          console.log('Materials fetch success (with slash):', responseSlash.data);
-          return responseSlash.data.data || responseSlash.data;
-        } catch (slashError) {
-          console.error('Both /api/material and /api/material/ failed');
-          throw slashError;
-        }
-      }
-      console.error('Failed to fetch materials:', error);
+      console.error('Failed to fetch materials from /api/material/:', error);
       throw error;
     }
   },

@@ -60,8 +60,16 @@ export default function Exam() {
       try {
         const data = await materialService.getMaterials();
         setMaterials(data);
-      } catch (error) {
-        console.error("Failed to fetch materials:", error);
+      } catch (error: any) {
+        console.error("--- Material Fetch Error (Exam Page) ---");
+        console.error("URL: /api/material/");
+        if (error.response) {
+          console.error("Status Code:", error.response.status);
+          console.error("Response Text:", JSON.stringify(error.response.data));
+        } else {
+          console.error("Error Object:", error);
+        }
+        console.error("----------------------------------------");
         toast.error("Failed to load your materials. Please try again.");
       } finally {
         setIsLoadingMaterials(false);
