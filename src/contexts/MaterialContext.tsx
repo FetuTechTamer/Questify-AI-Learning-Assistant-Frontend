@@ -80,35 +80,37 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
       })),
     ]);
 
-    // Upload files sequentially to avoid overwhelming the backend or causing DB locks
-    for (const { tempId, file } of tempEntries) {
-      try {
-        const response = await materialService.upload(file, (progress) => {
+    // Upload all files in parallel
+    await Promise.allSettled(
+      tempEntries.map(async ({ tempId, file }) => {
+        try {
+          const response = await materialService.upload(file, (progress) => {
+            setFiles((prev) =>
+              prev.map((f) => (f.id === tempId ? { ...f, progress } : f))
+            );
+          });
+          const material_id = response.material_id;
+          console.log(`[processFiles] "${file.name}" uploaded → material_id: ${material_id}`);
+
           setFiles((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, progress } : f))
+            prev.map((f) =>
+              f.id === tempId ? { ...f, id: material_id, status: "done", progress: 100 } : f
+            )
           );
-        });
-        const material_id = response.material_id;
-        console.log(`[processFiles] "${file.name}" uploaded → material_id: ${material_id}`);
+        } catch (error: any) {
+          console.error(`[processFiles] "${file.name}" upload failed:`, error);
+          const errorMessage = error.response?.data?.message || "Upload failed";
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === tempId ? { ...f, status: "error", errorMessage } : f
+            )
+          );
+          toast.error(`Failed to upload ${file.name}: ${errorMessage}`);
+        }
+      })
+    );
 
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === tempId ? { ...f, id: material_id, status: "done", progress: 100 } : f
-          )
-        );
-      } catch (error: any) {
-        console.error(`[processFiles] "${file.name}" upload failed:`, error);
-        const errorMessage = error.response?.data?.message || "Upload failed";
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === tempId ? { ...f, status: "error", errorMessage } : f
-          )
-        );
-        toast.error(`Failed to upload ${file.name}: ${errorMessage}`);
-      }
-    }
-
-    console.log('[processFiles] All uploads finished.');
+    console.log('[processFiles] All uploads settled.');
   }, []);
 
   const removeFile = useCallback(async (id: string) => {
@@ -121,59 +123,49 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const preprocessAction = async () => {
+  const handlePreprocess = async () => {
     const materialIds = files.filter(f => f.status === "done").map(f => f.id);
     if (materialIds.length === 0) {
       toast.error("No valid materials to process.");
       return;
     }
 
+    console.log('[handlePreprocess] Starting preprocess with IDs:', materialIds);
     setIsProcessing(true);
     try {
-      console.log('[preprocessAction] Sending material_ids to preprocess:', materialIds);
-      const preprocessResponse = await materialService.preprocess(materialIds);
-      
-      const freshCollectionId = preprocessResponse?.collection_id;
-      if (freshCollectionId) {
-        setCollectionId(freshCollectionId);
-        localStorage.setItem("active_collection_id", freshCollectionId);
-        console.log('[preprocessAction] collection_id saved:', freshCollectionId);
+      const response = await materialService.preprocess(materialIds);
+      if (response && response.collection_id) {
+        setCollectionId(response.collection_id);
+        localStorage.setItem("active_collection_id", response.collection_id);
+        setWizardStep(2); // Move to Step 2 after successful preprocess
         toast.success("Preprocessing complete!");
-        setWizardStep(2); // Move to Step 2 only after success
       } else {
-        toast.error("Preprocessing failed – no collection ID returned.");
+        throw new Error("No collection ID returned from server.");
       }
     } catch (error: any) {
-      console.error('[preprocessAction] Preprocess error:', error);
+      console.error("[handlePreprocess] Error:", error);
       toast.error(error.response?.data?.message || "Preprocess failed");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const analyzeAction = async () => {
+  const handleStartAnalysis = async () => {
     if (!collectionId) {
-      toast.error("No collection found. Please preprocess files first.");
+      toast.error("No active collection found. Please re-upload your files.");
+      setWizardStep(1);
       return;
     }
 
     setIsProcessing(true);
     try {
       const userConfidence = confidence[0];
-      const analyzeBody = { collection_id: collectionId, confidence: userConfidence };
-
-      console.log('[analyzeAction] Request body:', JSON.stringify(analyzeBody));
+      console.log('[handleStartAnalysis] Starting analysis for collection:', collectionId, 'with confidence:', userConfidence);
 
       const analyzeResponse = await materialService.analyze(collectionId, userConfidence);
-
-      console.log('[analyzeAction] Analyze raw response:', analyzeResponse);
-
       const chapters = analyzeResponse?.chapters ?? [];
-      console.log('[analyzeAction] Chapters count:', chapters.length);
-
-      if (chapters.length === 0) {
-        console.warn('[analyzeAction] No chapters returned by analyze.');
-      }
+      
+      console.log('[handleStartAnalysis] Analysis complete. Chapters:', chapters.length);
 
       const units = chapters.map((ch) => ({
         id: ch.chapter_number,
@@ -184,14 +176,10 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
 
       setExtractedUnits(units);
       setAnalysisReady(true);
-      setWizardStep(3);
+      setWizardStep(3); // Move to Step 3 after analysis
       toast.success("Neural analysis finished!");
     } catch (error: any) {
-      console.error('[analyzeAction] Error:', error);
-      if (error.response) {
-        console.error('[analyzeAction] Status:', error.response.status);
-        console.error('[analyzeAction] Response body:', JSON.stringify(error.response.data));
-      }
+      console.error('[handleStartAnalysis] Error:', error);
       toast.error(error.response?.data?.message || "Analysis failed");
     } finally {
       setIsProcessing(false);
@@ -212,8 +200,8 @@ export function MaterialProvider({ children }: { children: ReactNode }) {
         setConfidence,
         processFiles,
         removeFile,
-        handlePreprocess: preprocessAction,
-        handleStartAnalysis: analyzeAction,
+        handlePreprocess,
+        handleStartAnalysis,
         resetProcess,
       }}
     >

@@ -22,6 +22,16 @@ export interface AnalyzeResponse {
   chapters: AnalyzedChapter[];
 }
 
+export interface Material {
+  id: string;
+  title: string;
+  name?: string;
+  description: string;
+  icon?: string;
+  color?: string;
+  created_at: string;
+}
+
 export const materialService = {
   upload: async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
     const formData = new FormData();
@@ -43,8 +53,7 @@ export const materialService = {
       });
       console.log('Upload success:', response.data);
       console.log('--- Upload Diagnostic End (Success) ---');
-      const result = response.data?.data ?? response.data;
-      return result;
+      return response.data.data;
     } catch (error: any) {
       console.error('--- Upload Diagnostic End (Error) ---');
       console.error('Upload error details:', error);
@@ -78,8 +87,8 @@ export const materialService = {
         material_ids: materialIds,
       });
       console.log('Preprocess RAW response.data:', JSON.stringify(response.data));
-      // Safely handle both { success, data: { collection_id } } and { collection_id }
-      const result = response.data?.data ?? response.data;
+      // Backend wraps as { success, message, data: { collection_id } }
+      const result = response.data.data;
       console.log('Preprocess unwrapped result:', JSON.stringify(result));
       console.log('--- Preprocess Request End (Success) ---');
       return result;
@@ -102,36 +111,55 @@ export const materialService = {
     const body = { collection_id: collectionId, confidence: confidence };
     console.log('--- Analyze Request Start ---');
     console.log('Collection ID:', collectionId);
-    console.log('Collection ID type:', typeof collectionId);
     console.log('Confidence:', confidence);
-    console.log('Confidence type:', typeof confidence);
     console.log('Full request body:', JSON.stringify(body));
     console.log('Request URL:', (apiClient.defaults.baseURL || '') + '/api/material/analyze');
-    console.log('Auth token:', localStorage.getItem('access_token')?.substring(0, 20) + '...');
 
     try {
       const response = await apiClient.post('/api/material/analyze', body);
       console.log('Analyze RAW response.data:', JSON.stringify(response.data));
-      // Safely handle both { success, data: { chapters: [...] } } and { chapters: [...] }
-      const result: AnalyzeResponse = response.data?.data ?? response.data;
+      const result: AnalyzeResponse = response.data.data || response.data;
       console.log('Analyze unwrapped result:', JSON.stringify(result));
-      console.log('Chapters count:', result.chapters?.length);
       console.log('--- Analyze Request End (Success) ---');
       return result;
     } catch (error: any) {
       console.error('--- Analyze Request End (Error) ---');
       console.error('Analyze error details:', error);
-      if (error.response) {
-        console.error('HTTP Status:', error.response.status);
-        console.error('Response data:', JSON.stringify(error.response.data));
-        if (error.response.data?.detail) {
-          console.error('Validation details:', JSON.stringify(error.response.data.detail, null, 2));
+      throw error;
+    }
+  },
+
+  getMaterials: async (): Promise<Material[]> => {
+    console.log('Fetching materials list from /api/material');
+    try {
+      // Try singular without slash first
+      const response = await apiClient.get('/api/material');
+      console.log('Materials fetch success (singular):', response.data);
+      return response.data.data || response.data;
+    } catch (error: any) {
+      // If 404 or other error, try with trailing slash as requested
+      if (error.response?.status === 404) {
+        console.log('Singular /api/material failed (404), trying /api/material/');
+        try {
+          const responseSlash = await apiClient.get('/api/material/');
+          console.log('Materials fetch success (with slash):', responseSlash.data);
+          return responseSlash.data.data || responseSlash.data;
+        } catch (slashError) {
+          console.error('Both /api/material and /api/material/ failed');
+          throw slashError;
         }
-      } else if (error.request) {
-        console.error('No response received (Network Error?):', error.request);
-      } else {
-        console.error('Error message:', error.message);
       }
+      console.error('Failed to fetch materials:', error);
+      throw error;
+    }
+  },
+
+  getMaterial: async (id: string): Promise<Material> => {
+    try {
+      const response = await apiClient.get(`/api/material/${id}`);
+      return response.data.data || response.data;
+    } catch (error) {
+      console.error(`Failed to fetch material ${id}:`, error);
       throw error;
     }
   },

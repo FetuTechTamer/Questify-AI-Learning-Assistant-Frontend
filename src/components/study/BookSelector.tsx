@@ -4,7 +4,8 @@ import { FileText, ArrowRight, Spinner } from "@phosphor-icons/react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { api, Material } from "@/services/api";
+import { materialService, Material } from "@/services/materialService";
+import { api } from "@/services/api";
 import { toast } from "sonner";
 
 interface BookSelectorProps {
@@ -18,7 +19,7 @@ export function BookSelector({ onSelect }: BookSelectorProps) {
     useEffect(() => {
         const fetchMaterials = async () => {
             try {
-                const data = await api.getMaterials();
+                const data = await materialService.getMaterials();
                 setMaterials(data);
             } catch (error) {
                 console.error("Failed to fetch materials:", error);

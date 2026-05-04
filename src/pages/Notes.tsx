@@ -26,7 +26,8 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { noteMethods } from "@/data/mockData";
-import { api, Material } from "@/services/api";
+import { api } from "@/services/api";
+import { materialService, Material } from "@/services/materialService";
 import { toast } from "sonner";
 import NoteRoom from "./NoteRoom";
 import { mockTopics } from "@/data/mockTopics";
@@ -228,7 +229,7 @@ export default function Notes() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const data = await api.getMaterials();
+        const data = await materialService.getMaterials();
         setMaterials(data);
       } catch {
         toast.error("Failed to load your materials. Please try again.");

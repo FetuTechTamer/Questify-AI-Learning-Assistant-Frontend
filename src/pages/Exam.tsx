@@ -26,7 +26,8 @@ import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { questionTypes } from "@/data/mockData";
 import ExamRoom from "./ExamRoom";
-import { api, Material, ExamQuestion, SubmitResponse } from "@/services/api";
+import { api, ExamQuestion, SubmitResponse } from "@/services/api";
+import { materialService, Material } from "@/services/materialService";
 import { toast } from "sonner";
 
 export default function Exam() {
@@ -57,7 +58,7 @@ export default function Exam() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const data = await api.getMaterials();
+        const data = await materialService.getMaterials();
         setMaterials(data);
       } catch (error) {
         console.error("Failed to fetch materials:", error);
