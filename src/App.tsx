@@ -13,6 +13,8 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import VerifyOTP from "./pages/VerifyOTP";
 import Dashboard from "./pages/Dashboard";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Upload from "./pages/Upload";
 import Exam from "./pages/Exam";
 import Notes from "./pages/Notes";
@@ -44,6 +46,8 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Landing />} />
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/verify-otp" element={<VerifyOTP />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/upload" element={<Upload />} />

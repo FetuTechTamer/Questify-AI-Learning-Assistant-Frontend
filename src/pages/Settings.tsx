@@ -51,6 +51,11 @@ export default function Settings() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +108,40 @@ export default function Settings() {
       toast.error(error.response?.data?.message || "Failed to remove avatar");
     } finally {
       setIsUploading(false);
+    }
+  };
+  
+  const handleUpdatePassword = async () => {
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords do not match");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error("New password must be at least 8 characters");
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await authService.changePassword({
+        old_password: oldPassword,
+        new_password: newPassword
+      });
+      toast.success("Password updated successfully!");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Update password error:", error);
+      toast.error(error.response?.data?.message || "Failed to update password");
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -263,21 +302,44 @@ export default function Settings() {
                 <CardContent className="space-y-4 pt-6">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Current Password</Label>
-                    <Input type="password" placeholder="••••••••" className="bg-muted/30 border-none h-12" />
+                    <Input 
+                      type="password" 
+                      placeholder="••••••••" 
+                      className="bg-muted/30 border-none h-12" 
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                    />
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New Password</Label>
-                      <Input type="password" placeholder="••••••••" className="bg-muted/30 border-none h-12" />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className="bg-muted/30 border-none h-12" 
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Confirm New Password</Label>
-                      <Input type="password" placeholder="••••••••" className="bg-muted/30 border-none h-12" />
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className="bg-muted/30 border-none h-12" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
                     </div>
                   </div>
                   <div className="pt-4 flex justify-end">
-                    <Button variant="outline" className="px-8 h-12 rounded-xl font-bold" onClick={() => toast.info("Password update feature coming soon!")}>
-                      Update Password
+                    <Button 
+                      variant="outline" 
+                      className="px-8 h-12 rounded-xl font-bold" 
+                      onClick={handleUpdatePassword}
+                      disabled={isUpdatingPassword}
+                    >
+                      {isUpdatingPassword ? <CircleNotch className="w-5 h-5 animate-spin" /> : "Update Password"}
                     </Button>
                   </div>
                 </CardContent>
