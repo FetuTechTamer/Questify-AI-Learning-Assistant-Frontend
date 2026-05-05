@@ -36,11 +36,40 @@ export const api = {
   // Exams
   generateExam: async (params: { 
     collection_id: string; 
+    chapter_ids: string[];
     question_count: number; 
-    difficulty?: string 
+    difficulty?: string;
+    question_types: string[];
   }): Promise<ExamData> => {
-    const response = await apiClient.post('/api/exam/generate-exam', params);
-    return response.data.data || response.data;
+    const url = '/api/exam/generate-exam';
+    const token = localStorage.getItem('access_token');
+    
+    console.log('--- EXAM GENERATION START ---');
+    console.log('Request URL:', url);
+    console.log('Request Body:', params);
+    console.log('Request Headers:', {
+      'Authorization': token ? `Bearer ${token.substring(0, 10)}...` : 'None',
+      'Content-Type': 'application/json'
+    });
+
+    try {
+      const response = await apiClient.post(url, params);
+      return response.data.data || response.data;
+    } catch (error: any) {
+      console.error('--- EXAM GENERATION FAILED ---');
+      
+      if (error.response) {
+        console.error('Response Status:', error.response.status);
+        console.error('Response Data (Raw/Parsed):', error.response.data);
+        console.error('Response Headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('Network Error - No response received:', error.request);
+      } else {
+        console.error('Error during request setup:', error.message);
+      }
+      
+      throw error;
+    }
   },
 
   submitExam: async (params: { 

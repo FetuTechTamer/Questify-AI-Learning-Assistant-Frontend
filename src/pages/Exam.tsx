@@ -28,6 +28,7 @@ import { questionTypes } from "@/data/mockData";
 import ExamRoom from "./ExamRoom";
 import { api, ExamQuestion, SubmitResponse } from "@/services/api";
 import { collectionsService, Collection } from "@/services/collectionsService";
+import { materialService, AnalyzedChapter } from "@/services/materialService";
 import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 
@@ -39,6 +40,8 @@ export default function Exam() {
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [chapters, setChapters] = useState<AnalyzedChapter[]>([]);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   
   // Exam State
   const [examId, setExamId] = useState<string | null>(null);
@@ -86,6 +89,28 @@ export default function Exam() {
     fetchCollections();
   }, [sessionCollectionId]);
 
+  // Fetch chapters when collection is selected
+  useEffect(() => {
+    if (activeCollectionId) {
+      const fetchChapters = async () => {
+        setIsLoadingChapters(true);
+        try {
+          // Using analyze endpoint to get chapters for now as per materialService capabilities
+          const data = await materialService.analyze(activeCollectionId);
+          setChapters(data.chapters || []);
+        } catch (error) {
+          console.error("Failed to fetch chapters for collection:", error);
+          setChapters([]);
+        } finally {
+          setIsLoadingChapters(false);
+        }
+      };
+      fetchChapters();
+    } else {
+      setChapters([]);
+    }
+  }, [activeCollectionId]);
+
   // Timer logic
   useEffect(() => {
     if (step === "exam" && !isFinished && timeLeft > 0) {
@@ -114,10 +139,26 @@ export default function Exam() {
     
     setIsGenerating(true);
     try {
+      // Map question type IDs to labels for the backend
+      const selectedTypeLabels = config.questionTypes.map(typeId => {
+        const type = questionTypes.find(t => t.id === typeId);
+        return type ? type.label : typeId;
+      });
+
+      // Capitalize difficulty for backend consistency
+      const formattedDifficulty = config.difficulty === 'mixed' 
+        ? "Medium" 
+        : config.difficulty.charAt(0).toUpperCase() + config.difficulty.slice(1);
+
+      // Get all chapter IDs from the fetched chapters
+      const chapterIds = chapters.map(ch => ch.chapter_id);
+
       const examData = await api.generateExam({
         collection_id: activeCollectionId,
+        chapter_ids: chapterIds,
         question_count: config.questionCount,
-        difficulty: config.difficulty === 'mixed' ? undefined : config.difficulty
+        difficulty: formattedDifficulty,
+        question_types: selectedTypeLabels
       });
       
       setExamId(examData.exam_id);
@@ -128,9 +169,15 @@ export default function Exam() {
       setResults(null);
       setStep("exam");
       toast.success("Exam generated successfully!");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to generate exam:", error);
-      toast.error("Failed to generate exam. AI might be busy, try again.");
+      
+      if (error.code === 'ERR_NETWORK' || !error.response) {
+        toast.error("Network error – cannot reach exam service");
+      } else {
+        const backendMessage = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || "Failed to generate exam. AI might be busy, try again.";
+        toast.error(backendMessage);
+      }
     } finally {
       setIsGenerating(false);
     }

@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
 import {
   Books,
   MagnifyingGlass,
@@ -9,223 +8,81 @@ import {
   CheckCircle,
   FileText,
   List,
-  Graph,
   Table,
+  Package,
   AlignLeft,
-  Plus,
-  Trash,
   CircleNotch,
-  GraduationCap,
+  Trash,
+  Plus
 } from "@phosphor-icons/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { noteMethods } from "@/data/mockData";
-import { api } from "@/services/api";
-import { collectionsService, Collection } from "@/services/collectionsService";
-import { useMaterial } from "@/contexts/MaterialContext";
-import { toast } from "sonner";
 import NoteRoom from "./NoteRoom";
-import { mockTopics } from "@/data/mockTopics";
+import { toast } from "sonner";
+import { collectionsService, Collection } from "@/services/collectionsService";
+import { noteService } from "@/services/noteService";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-// ─── API-backed note methods ────────────────────────────────────────────────
-const API_METHODS = ["cornell", "sentence", "outline", "mind-map", "charting"];
+// Filter only the 6 specified methods
+const supportedMethodIds = ['cornell', 'sentence', 'boxing', 'outline', 'mindmap', 'charting'];
+const filteredMethods = noteMethods.filter(m => supportedMethodIds.includes(m.id));
 
-const methodVisuals: Record<string, { gradient: string; icon: any }> = {
-  cornell:    { gradient: "bg-gradient-to-br from-emerald-400 to-teal-600",    icon: FileText  },
-  outline:    { gradient: "bg-gradient-to-br from-blue-400 to-indigo-600",     icon: List      },
-  mindmap:    { gradient: "bg-gradient-to-br from-violet-400 to-purple-600",   icon: Brain     },
-  "mind-map": { gradient: "bg-gradient-to-br from-violet-400 to-purple-600",   icon: Brain     },
-  charting:   { gradient: "bg-gradient-to-br from-orange-400 to-red-600",      icon: Table     },
-  boxing:     { gradient: "bg-gradient-to-br from-pink-400 to-rose-600",       icon: Graph     },
-  sentence:   { gradient: "bg-gradient-to-br from-rose-400 to-pink-600",       icon: AlignLeft },
+// Mock data fallbacks for each method
+const mockNotesFallback: Record<string, any[]> = {
+  'cornell': [
+    { id: 'm-c-1', title: 'Cornell Example: Neural Networks', content: 'Cues: Architecture, Backprop. Notes: Neural nets consist of layers. Summary: Deep learning fundamentals.', created_at: new Date().toISOString() }
+  ],
+  'sentence': [
+    { id: 'm-s-1', title: 'Sentence Example: Biology 101', content: 'Mitochondria is the powerhouse of the cell. Ribosomes are responsible for protein synthesis.', created_at: new Date().toISOString() }
+  ],
+  'outline': [
+    { id: 'm-o-1', title: 'Outline Example: React Lifecycle', content: '1. Mounting\n   - constructor\n   - render\n   - componentDidMount', created_at: new Date().toISOString() }
+  ],
+  'mindmap': [
+    { id: 'm-m-1', title: 'Mindmap Example: Web Dev', content: 'Frontend -> HTML, CSS, JS; Backend -> Node, Python, Go;', created_at: new Date().toISOString() }
+  ],
+  'boxing': [
+    { id: 'm-b-1', title: 'Boxing Example: History', content: 'Box 1: WW1 (1914-1918); Box 2: WW2 (1939-1945);', created_at: new Date().toISOString() }
+  ],
+  'charting': [
+    { id: 'm-ch-1', title: 'Charting Example: Compare Databases', content: 'SQL: Relational, Strict Schema; NoSQL: Non-relational, Flexible;', created_at: new Date().toISOString() }
+  ]
 };
 
-// ─── NoteEditor ─────────────────────────────────────────────────────────────
-interface NoteEditorProps {
-  method: string;
-  collectionId: string;
-  onSaved: () => void;
-}
-
-function NoteEditor({ method, collectionId, onSaved }: NoteEditorProps) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!title.trim() && !content.trim()) {
-      toast.error("Please add a title or some content.");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await api.saveNote(method, { collection_id: collectionId, title, content });
-      toast.success("Note saved!");
-      setTitle("");
-      setContent("");
-      onSaved();
-    } catch {
-      toast.error("Failed to save note. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <Card className="border-dashed border-2 border-primary/30 bg-primary/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-          <Plus className="w-4 h-4" /> New {method} Note
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Input
-          placeholder="Note title..."
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <Textarea
-          placeholder="Write your note content here..."
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          className="min-h-[120px]"
-        />
-        <Button onClick={handleSave} disabled={isSaving} className="w-full">
-          {isSaving ? (
-            <><CircleNotch className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-          ) : (
-            <><Plus className="w-4 h-4 mr-2" /> Save Note</>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── NotesList ───────────────────────────────────────────────────────────────
-interface NotesListProps {
-  method: string;
-  collectionId: string;
-  refreshTrigger: number;
-}
-
-function NotesList({ method, collectionId, refreshTrigger }: NotesListProps) {
-  const [notes, setNotes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const data = await api.getNotes(method, collectionId);
-        setNotes(Array.isArray(data) ? data : []);
-      } catch {
-        toast.error(`Failed to load ${method} notes.`);
-        setNotes([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [method, collectionId, refreshTrigger]);
-
-  const handleDelete = async (noteId: string) => {
-    setDeletingId(noteId);
-    try {
-      await api.deleteNote(method, noteId);
-      setNotes((prev) => prev.filter((n) => (n.id || n._id) !== noteId));
-      toast.success("Note deleted.");
-    } catch {
-      toast.error("Failed to delete note.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <CircleNotch className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (notes.length === 0) {
-    return (
-      <div className="text-center py-10 text-muted-foreground text-sm">
-        No {method} notes yet. Create one above!
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {notes.map((note) => {
-        const id = note.id || note._id || String(Math.random());
-        return (
-          <Card key={id} className="group relative">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  {note.title && (
-                    <h4 className="font-bold text-sm mb-1 truncate">{note.title}</h4>
-                  )}
-                  <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap">
-                    {typeof note.content === "string"
-                      ? note.content
-                      : JSON.stringify(note.content)}
-                  </p>
-                  {note.created_at && (
-                    <p className="text-[10px] text-muted-foreground mt-2 opacity-60">
-                      {new Date(note.created_at).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                  onClick={() => handleDelete(id)}
-                  disabled={deletingId === id}
-                >
-                  {deletingId === id ? (
-                    <CircleNotch className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── Main Notes Page ─────────────────────────────────────────────────────────
 export default function Notes() {
-  const { collectionId: sessionCollectionId } = useMaterial();
-  // Collection selection state
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Method selection (for API-backed methods)
-  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  // NoteRoom fallback for non-API methods
+  const [activeTopic, setActiveTopic] = useState<any | null>(null);
+  const [activeMethod, setActiveMethod] = useState<string | null>(null);
   const [isNoteRoomOpen, setIsNoteRoomOpen] = useState(false);
-  const [noteRoomMethod, setNoteRoomMethod] = useState<string | null>(null);
+
+  // Selection state
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
+  const [selectedMethodId, setSelectedMethodId] = useState<string>("cornell");
+
+  // Data state
+  const [notes, setNotes] = useState<any[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch collections on mount
   useEffect(() => {
@@ -233,287 +90,295 @@ export default function Notes() {
       try {
         const data = await collectionsService.getCollections();
         setCollections(data);
-      } catch (error: any) {
-        console.error("--- Collection Fetch Error (Notes Page) ---");
-        console.error("URL: /api/collections/");
-        
-        // Fallback to session collection if available
-        if (sessionCollectionId) {
-          const fallbackCollection: Collection = {
-            collection_id: sessionCollectionId,
-            title: "Current Session Collection",
-            description: "Materials you just uploaded and processed",
-            created_at: new Date().toISOString()
-          };
-          setCollections([fallbackCollection]);
-          toast.info("Using collection from your current session.");
-        } else {
-          toast.error("Failed to load your study collections. Please try again.");
+        if (data.length > 0) {
+          // Load last used or default
+          const lastCollection = localStorage.getItem('last_note_collection');
+          const initialId = lastCollection && data.find(c => c.collection_id === lastCollection)
+            ? lastCollection
+            : data[0].collection_id;
+
+          setSelectedCollectionId(initialId);
+
+          const lastMethod = localStorage.getItem('last_note_method');
+          if (lastMethod && supportedMethodIds.includes(lastMethod)) {
+            setSelectedMethodId(lastMethod);
+          }
         }
+      } catch (error) {
+        console.error("Failed to fetch collections:", error);
+        toast.error("Could not load study collections.");
       } finally {
         setIsLoadingCollections(false);
       }
     };
     fetchCollections();
-  }, [sessionCollectionId]);
+  }, []);
 
-  const selectedCollection = collections.find((c) => c.collection_id === selectedCollectionId);
+  // Persist selections
+  useEffect(() => {
+    if (selectedCollectionId) localStorage.setItem('last_note_collection', selectedCollectionId);
+    if (selectedMethodId) localStorage.setItem('last_note_method', selectedMethodId);
+  }, [selectedCollectionId, selectedMethodId]);
 
-  const filteredCollections = collections.filter((c) =>
-    (c.title || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchNotes = useCallback(async () => {
+    if (!selectedCollectionId || !selectedMethodId) return;
 
-  const handleLaunch = () => {
+    setIsLoadingNotes(true);
+    console.log(`[Notes Hub] Fetching notes for collection ${selectedCollectionId} and method ${selectedMethodId}...`);
+
+    try {
+      const data = await noteService.getNotes(selectedMethodId, selectedCollectionId);
+      console.log(`[Notes Hub] Received ${data.length} notes from API.`);
+      setNotes(data);
+    } catch (error: any) {
+      console.error(`[Notes Hub] Failed to fetch notes:`, error);
+      if (error.response?.status === 404) {
+        console.warn(`[Notes Hub] Endpoint returned 404, falling back to mock data.`);
+        toast.info("Backend not ready – showing mock results");
+        setNotes(mockNotesFallback[selectedMethodId] || []);
+      } else {
+        toast.error("Failed to load notes.");
+      }
+    } finally {
+      setIsLoadingNotes(false);
+    }
+  }, [selectedCollectionId, selectedMethodId]);
+
+  // Fetch notes when selection changes
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
+  const handleLaunch = async () => {
     if (!selectedCollectionId || !selectedMethodId) {
-      toast.error("Please select both a collection and a note method.");
+      toast.error("Please select a collection first.");
       return;
     }
 
-    // API-backed methods → open inline view
-    if (API_METHODS.includes(selectedMethodId)) {
-      // Stay on this page, render inline
-      return;
-    }
+    console.log(`[Notes Hub] Launching Studio for collection ${selectedCollectionId}, method ${selectedMethodId}`);
+    setIsGenerating(true);
 
-    // Fallback: NoteRoom with mock topic data for non-API methods
-    const fallbackTopic = Object.values(mockTopics)[0];
-    if (fallbackTopic) {
-      setNoteRoomMethod(selectedMethodId);
-      setIsNoteRoomOpen(true);
+    try {
+      const result = await noteService.generateNote(selectedMethodId, selectedCollectionId);
+      console.log(`[Notes Hub] Generation successful:`, result);
+      toast.success("AI Studio is processing your materials...");
+
+      // Immediately fetch notes after success
+      console.log(`[Notes Hub] Refreshing note list...`);
+      await fetchNotes();
+    } catch (error: any) {
+      console.error(`[Notes Hub] Launch failed:`, error);
+      if (error.response?.status === 404) {
+        toast.info("Backend not ready – showing mock results");
+        console.warn(`[Notes Hub] Falling back to mock results due to 404.`);
+        setNotes(mockNotesFallback[selectedMethodId] || []);
+      } else {
+        const errorMsg = error.response?.data?.message || "AI service is currently busy.";
+        toast.error(errorMsg);
+      }
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  // NoteRoom for non-API methods
-  if (isNoteRoomOpen && noteRoomMethod) {
-    const fallbackTopic = Object.values(mockTopics)[0];
+  const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => {
+    e.stopPropagation();
+    try {
+      await noteService.deleteNote(selectedMethodId, noteId);
+      toast.success("Note removed successfully.");
+      await fetchNotes();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      toast.error("Could not delete this note.");
+    }
+  };
+
+  const handleOpenNote = (note: any) => {
+    const transformedTopic = {
+      id: note.id || note.note_id,
+      title: note.title || "Generated Note",
+      courseId: "AI-Studio",
+      [selectedMethodId]: note.content || note
+    };
+
+    setActiveTopic(transformedTopic);
+    setActiveMethod(selectedMethodId);
+    setIsNoteRoomOpen(true);
+  };
+
+  const filteredCollections = collections.filter(collection =>
+    collection.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (isNoteRoomOpen && activeTopic && activeMethod) {
     return (
-      <Layout showSidebar={false} title={`Notes`}>
+      <Layout showSidebar={false} title={`Notes: ${activeTopic.title}`}>
         <NoteRoom
-          topic={fallbackTopic}
-          initialMethod={noteRoomMethod}
+          topic={activeTopic}
+          initialMethod={activeMethod}
           onClose={() => setIsNoteRoomOpen(false)}
         />
       </Layout>
     );
   }
 
-  // Inline API note-taking view
-  const isApiMethod = selectedMethodId && API_METHODS.includes(selectedMethodId);
-  if (isApiMethod && selectedCollectionId) {
-    const visual = methodVisuals[selectedMethodId] || methodVisuals["outline"];
-    const IconComponent = visual.icon;
-
-    return (
-      <DashboardLayout title="Notes Hub">
-        <div className="container py-4 md:py-6 max-w-4xl mx-auto space-y-4 md:space-y-6">
-          <div className="flex items-center gap-3 md:gap-4 pb-4 border-b">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedMethodId(null)} className="h-8 w-8 p-0 md:h-auto md:w-auto md:px-3 md:py-2">
-              ← <span className="hidden md:inline ml-1">Back</span>
-            </Button>
-            <div className="min-w-0">
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight capitalize truncate">
-                {selectedMethodId.replace("-", " ")} Notes
-              </h1>
-              <p className="text-xs md:text-sm text-muted-foreground truncate">
-                {selectedCollection?.title}
-              </p>
-            </div>
-          </div>
-
-          <NoteEditor
-            method={selectedMethodId}
-            collectionId={selectedCollectionId}
-            onSaved={() => setRefreshTrigger((t) => t + 1)}
-          />
-
-          <div>
-            <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
-              Saved Notes
-            </h2>
-            <NotesList
-              method={selectedMethodId}
-              collectionId={selectedCollectionId}
-              refreshTrigger={refreshTrigger}
-            />
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
-    <DashboardLayout title="Notes Hub">
-      <div className="container py-4 md:py-6 max-w-7xl mx-auto space-y-6">
+    <DashboardLayout title="Cognitive Studio">
+      <div className="container py-6 max-w-7xl mx-auto space-y-6">
+
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 pb-6 border-b">
-          <div className="text-center md:text-left">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Cognitive Studio</h1>
-            <p className="text-xs md:text-sm text-muted-foreground mt-1">
-              Select your study collection and a structured note-taking method
-            </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Cognitive Studio</h1>
+            <p className="text-muted-foreground mt-1">Transform your study materials into structured cognitive assets.</p>
           </div>
-          <div className="flex items-center justify-center gap-2 md:gap-3">
-            <Badge variant="outline" className="px-2 md:px-3 py-1 gap-1 md:gap-1.5 font-medium rounded-full text-[10px] md:text-xs">
-              <Books className="w-3 md:h-3.5" />
+
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full bg-primary/5">
+              <Books className="w-3.5 h-3.5 text-primary" />
               {collections.length} Collections
             </Badge>
-            <Badge variant="outline" className="px-2 md:px-3 py-1 gap-1 md:gap-1.5 font-medium rounded-full text-[10px] md:text-xs">
-              <Brain className="w-3 md:h-3.5" />
-              10 Methods
+            <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full bg-primary/5">
+              <Brain className="w-3.5 h-3.5 text-primary" />
+              6 Methods
             </Badge>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-          {/* ── Left: Collection Selection ─────────────────────────── */}
-          <div className="lg:col-span-4 space-y-4">
-            <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-2">
-              <AlignLeft className="w-4 h-4" /> Select Collection
-            </h2>
-
-            <div className="relative">
-              <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search collections..."
-                className="pl-10 h-9 rounded-lg border-none bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/20"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Loading skeletons */}
-            {isLoadingCollections ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
-                ))}
+        <div className="grid lg:grid-cols-12 gap-8">
+          {/* Left: Collections Sidebar (Optional but kept for UI consistency) */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Collection</h2>
               </div>
-            ) : collections.length === 0 ? (
-              /* Empty state — consistent with Exam page */
-              <Card className="p-8 text-center border-dashed">
-                <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
-                  <GraduationCap className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <h3 className="text-base font-bold mb-1">No collections found</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Upload some study materials first and process them into a collection.
-                </p>
-                <Button asChild size="sm">
-                  <Link to="/upload">Upload & Process</Link>
-                </Button>
-              </Card>
-            ) : filteredCollections.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-2 text-center md:text-left">No collections match your search.</p>
-            ) : (
-              <div className="space-y-2 max-h-[300px] lg:max-h-[500px] overflow-y-auto pr-2">
-                {filteredCollections.map((collection) => (
+              <div className="relative">
+                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Filter collections..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10 rounded-xl border-none bg-muted/50"
+                />
+              </div>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                {isLoadingCollections ? (
+                  [1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)
+                ) : filteredCollections.map(c => (
                   <button
-                    key={collection.collection_id}
-                    onClick={() => setSelectedCollectionId(collection.collection_id)}
+                    key={c.collection_id}
+                    onClick={() => setSelectedCollectionId(c.collection_id)}
                     className={cn(
-                      "w-full text-left p-3 rounded-lg transition-all duration-200 border relative group",
-                      selectedCollectionId === collection.collection_id
-                        ? "bg-primary/10 border-primary text-primary shadow-sm"
-                        : "bg-card border-transparent hover:bg-accent/50 text-muted-foreground hover:text-foreground"
+                      "w-full text-left p-3 rounded-xl transition-all border",
+                      selectedCollectionId === c.collection_id
+                        ? "bg-primary/10 border-primary text-primary"
+                        : "border-transparent hover:bg-muted"
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "w-2 h-2 rounded-full shrink-0",
-                          selectedCollectionId === collection.collection_id
-                            ? "bg-primary"
-                            : "bg-muted-foreground/30"
-                        )}
-                      />
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-sm leading-tight truncate">
-                          {collection.title}
-                        </h3>
-                        {collection.description && (
-                          <p className="text-[10px] opacity-60 truncate mt-0.5">
-                            {collection.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    <p className="font-bold text-sm truncate">{c.title}</p>
+                    <p className="text-[10px] opacity-60">Created {new Date(c.created_at).toLocaleDateString()}</p>
                   </button>
                 ))}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* ── Right: Method Selection ───────────────────────────── */}
-          <div className="lg:col-span-8 space-y-6 md:space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground px-2">
-                Choose Structure
-              </h2>
+          {/* Right: Tabs & Notes */}
+          <div className="lg:col-span-9 space-y-8">
+            <Tabs value={selectedMethodId} onValueChange={setSelectedMethodId} className="w-full">
+              <TabsList className="grid grid-cols-3 md:grid-cols-6 h-auto p-1 bg-muted/50 rounded-2xl">
+                {filteredMethods.map(m => (
+                  <TabsTrigger
+                    key={m.id}
+                    value={m.id}
+                    className="rounded-xl py-2.5 data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-lg">{m.icon}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-tighter">{m.name.split(' ')[0]}</span>
+                    </div>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-                {noteMethods.map((method) => {
-                  const visual = methodVisuals[method.id] || methodVisuals["outline"];
-                  const IconComponent = visual.icon;
-                  const isApiSupported = API_METHODS.includes(method.id);
+              {filteredMethods.map(m => (
+                <TabsContent key={m.id} value={m.id} className="mt-8 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xl font-bold">{m.name}</h2>
+                      <p className="text-sm text-muted-foreground">{m.description}</p>
+                    </div>
+                  </div>
 
-                  return (
-                    <button
-                      key={method.id}
-                      onClick={() => setSelectedMethodId(method.id)}
-                      className={cn(
-                        "relative flex flex-col items-center justify-center p-3 md:p-4 rounded-xl transition-all duration-300 group overflow-hidden border-2 text-center h-32 md:h-40",
-                        selectedMethodId === method.id
-                          ? "border-primary bg-primary/5 shadow-lg shadow-primary/10 scale-105"
-                          : "border-transparent bg-muted/40 hover:bg-muted/60 opacity-80 hover:opacity-100"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-4 transition-transform group-hover:scale-110",
-                          selectedMethodId === method.id
-                            ? "bg-primary text-primary-foreground shadow-md"
-                            : "bg-card text-muted-foreground"
-                        )}
-                      >
-                        <IconComponent className="w-5 h-5 md:w-6 md:h-6" />
+                  {isLoadingNotes ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-4 opacity-50 border border-dashed rounded-3xl">
+                      <CircleNotch className="w-10 h-10 animate-spin text-primary" />
+                      <p className="text-sm font-medium">Synchronizing studio...</p>
+                    </div>
+                  ) : notes.length === 0 ? (
+                    <Card className="p-16 text-center border-dashed bg-muted/10 rounded-3xl">
+                      <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 text-primary">
+                        <Sparkle className="w-8 h-8" weight="fill" />
                       </div>
-                      <h4 className="font-bold text-sm md:text-base mb-1 truncate w-full px-1">{method.name}</h4>
-                      <p className="text-[9px] md:text-[10px] text-muted-foreground px-1 leading-tight hidden sm:block">
-                        {method.description.split(".")[0]}.
+                      <h3 className="text-lg font-bold mb-2">No {m.name} notes yet</h3>
+                      <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+                        Click "Launch Studio" above to let AI analyze your materials and generate structured notes.
                       </p>
-                      {isApiSupported && (
-                        <span className="absolute top-1.5 md:top-2 left-1.5 md:left-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary px-1 md:px-1.5 py-0.5 rounded-full">
-                          Live
-                        </span>
-                      )}
-                      {selectedMethodId === method.id && (
-                        <div className="absolute top-1.5 md:top-2 right-1.5 md:right-2 bg-primary text-primary-foreground p-1 rounded-full shadow-lg">
-                          <CheckCircle className="w-3 h-3 md:w-4 md:h-4" weight="fill" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      {notes.map((note) => (
+                        <Card
+                          key={note.id || note.note_id}
+                          className="group relative overflow-hidden p-6 hover:shadow-xl transition-all cursor-pointer border-primary/10"
+                          onClick={() => handleOpenNote(note)}
+                        >
+                          <div className="flex flex-col h-full gap-4">
+                            <div className="flex items-start justify-between">
+                              <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                                <FileText className="w-6 h-6" />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all"
+                                onClick={(e) => handleDeleteNote(e, note.id || note.note_id)}
+                              >
+                                <Trash className="w-5 h-5" />
+                              </Button>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                                {new Date(note.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                              </p>
+                              <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                                {note.title}
+                              </h3>
+                            </div>
+                            <div className="pt-4 border-t flex items-center justify-between text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                              Open in Studio
+                              <ArrowRight className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
 
-            {/* Summary Action Bar */}
-            <div className="bg-card p-4 rounded-xl shadow-lg border flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 text-center md:text-left min-w-0 w-full md:w-auto">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                  Selected Configuration
-                </p>
-                <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3">
-                  <span className="font-bold truncate max-w-[120px] md:max-w-[200px] text-xs md:text-sm">
-                    {selectedCollectionId
-                      ? selectedCollection?.title
-                      : "Select collection"}
+            {/* Selection Summary Action */}
+            <div className="bg-card p-4 rounded-xl shadow-lg border flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in">
+              <div className="space-y-1 text-center md:text-left">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Selected Configuration</p>
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-sm">
+                    {selectedCollectionId ? collections.find(c => c.collection_id === selectedCollectionId)?.title : "Select a topic"}
                   </span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                  <span className="font-bold text-primary text-xs md:text-sm truncate">
-                    {selectedMethodId
-                      ? noteMethods.find((m) => m.id === selectedMethodId)?.name
-                      : "Choose method"}
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-bold text-sm text-primary">
+                    {selectedMethodId ? filteredMethods.find(m => m.id === selectedMethodId)?.name : "Choose method"}
                   </span>
                 </div>
               </div>
@@ -521,13 +386,11 @@ export default function Notes() {
               <Button
                 size="lg"
                 onClick={handleLaunch}
-                disabled={!selectedCollectionId || !selectedMethodId}
-                className="rounded-full px-8 md:px-10 h-10 md:h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95 w-full md:w-auto text-xs md:text-sm"
+                disabled={isGenerating || !selectedCollectionId}
+                className="rounded-xl px-8 h-12 gap-2 font-bold shadow-lg shadow-primary/20"
               >
-                {selectedMethodId && API_METHODS.includes(selectedMethodId)
-                  ? "Open Notes"
-                  : "Launch Studio"}
-                <Sparkle className="ml-2 w-4 h-4" weight="fill" />
+                {isGenerating ? <CircleNotch className="w-4 h-4 animate-spin" /> : <Sparkle className="w-4 h-4" />}
+                Launch Studio
               </Button>
             </div>
           </div>

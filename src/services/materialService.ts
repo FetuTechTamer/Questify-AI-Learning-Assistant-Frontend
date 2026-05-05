@@ -9,6 +9,7 @@ export interface PreprocessResponse {
 }
 
 export interface AnalyzedChapter {
+  chapter_id: string;
   chapter_number: number;
   chapter_title: string;
   chapter_description: string;
