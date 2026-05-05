@@ -25,25 +25,25 @@ import { useChapter } from "@/hooks/useChapter";
 import { useNavigate } from "react-router-dom";
 
 interface StandardReadMethodProps {
-    chapterId: string;
+    collectionId: string;
     courseId: string;
     bookFilename?: string;
     onBack: () => void;
 }
 
-export function StandardReadMethod({ chapterId, courseId, onBack }: StandardReadMethodProps) {
+export function StandardReadMethod({ collectionId, courseId, onBack }: StandardReadMethodProps) {
     const navigate = useNavigate();
     // Mock hooks for now if real data isn't ready
     const { chapterContent: chapter, isGenerating: isLoading, generateChapter } = useChapter();
 
     useEffect(() => {
-        if (chapterId && !chapter) {
+        if (collectionId && !chapter) {
             generateChapter({
                 courseName: courseId || 'Course',
-                chapterTitle: chapterId
+                collectionId: collectionId
             });
         }
-    }, [chapterId, courseId, chapter]);
+    }, [collectionId, courseId, chapter]);
 
     const [activeTab, setActiveTab] = useState("notes");
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -86,7 +86,7 @@ export function StandardReadMethod({ chapterId, courseId, onBack }: StandardRead
                     <div>
                         <h1 className="text-sm font-bold flex items-center gap-2">
                             <BookOpen className="w-4 h-4 text-primary" />
-                            {chapterId || "Loading Chapter..."}
+                            {collectionId || "Loading Chapter..."}
                         </h1>
                         <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                             {courseId || "Course"} • Standard View • 15 min
@@ -129,7 +129,7 @@ export function StandardReadMethod({ chapterId, courseId, onBack }: StandardRead
                                 ) : (
                                     <ChapterContent
                                         content={chapter}
-                                        title={chapterId || "Untitled"}
+                                        title={collectionId || "Untitled"}
                                         courseName={courseId || "General"}
                                     />
                                 )}

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-export function ReverseLearning({ onBack }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function ReverseLearning({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
     const [step, setStep] = useState(0);
     const [revealedSteps, setRevealedSteps] = useState<number[]>([]);
 
@@ -60,24 +60,6 @@ function workLoop(deadline) {
                             <pre className="text-cyan-100/90 whitespace-pre-wrap">
                                 {PROBLEM.solution_code}
                             </pre>
-                        </Card>
-                    </div>
-
-                    {/* Right: The Breakdown (Principles) */}
-                    <div className="w-full md:w-1/2 flex flex-col bg-cyan-50/20 dark:bg-cyan-950/10">
-                        <div className="p-6 border-b bg-background/50 backdrop-blur">
-                            <h3 className="text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-wider text-xs mb-2">Working Backwards</h3>
-                            <p className="text-sm text-muted-foreground">Identify the core principles that make this solution work.</p>
-                        </div>
-
-                        <ScrollArea className="flex-1 p-6">
-                            <div className="space-y-4">
-                                {PROBLEM.principles.map((principle, idx) => (
-                                    <div key={idx} className="relative">
-                                        <button
-                                            onClick={() => toggleStep(idx)}
-                                            className={cn(
-                                                "w-full text-left p-4 border transition-all duration-300 flex items-start gap-4",
                                                 revealedSteps.includes(idx)
                                                     ? "bg-background border-cyan-500 shadow-md"
                                                     : "bg-muted/50 border-transparent hover:bg-muted"

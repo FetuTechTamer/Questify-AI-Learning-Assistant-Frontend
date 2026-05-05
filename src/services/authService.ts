@@ -78,18 +78,18 @@ export const authService = {
   },
 
   forgotPassword: async (email: string) => {
-    const response = await apiClient.post('/api/auth/forget-password', { email });
-    return response.data;
+    const response = await apiClient.post('/api/auth/forgot-password', { email });
+    return response.data.data || response.data;
   },
 
   resetPassword: async (data: any) => {
     const response = await apiClient.post('/api/auth/reset-password', data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   changePassword: async (data: any) => {
     const response = await apiClient.patch('/api/auth/user/password', data);
-    return response.data;
+    return response.data.data || response.data;
   },
 
   logout: () => {

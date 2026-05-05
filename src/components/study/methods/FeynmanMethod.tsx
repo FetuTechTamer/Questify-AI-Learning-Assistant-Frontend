@@ -24,11 +24,11 @@ interface FeynmanMethodProps {
     chapterId: string;
     courseId: string;
     bookFilename?: string;
-    materialId?: string; // New API prop
+    collectionId?: string; // New API prop
     onBack: () => void;
 }
 
-export function FeynmanMethod({ chapterId, courseId, bookFilename, materialId, onBack }: FeynmanMethodProps) {
+export function FeynmanMethod({ chapterId, courseId, bookFilename, collectionId, onBack }: FeynmanMethodProps) {
     const [interactionState, setInteractionState] = useState<InteractionState>('AI_ASKING');
     const [userInput, setUserInput] = useState("");
     const [chatHistory, setChatHistory] = useState<Array<{ sender: 'ai' | 'user', text: string, type?: 'critique' | 'question' }>>([
@@ -44,14 +44,14 @@ export function FeynmanMethod({ chapterId, courseId, bookFilename, materialId, o
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!materialId) {
+        if (!collectionId) {
             setIsLoading(false);
             return;
         }
 
         const fetchFeynmanData = async () => {
             try {
-                const data = await api.getFeynmanData(materialId);
+                const data = await api.getFeynmanData(collectionId);
                 if (data && data.last_explanation) {
                     setChatHistory(prev => [
                         ...prev,
@@ -72,7 +72,7 @@ export function FeynmanMethod({ chapterId, courseId, bookFilename, materialId, o
         };
 
         fetchFeynmanData();
-    }, [materialId]);
+    }, [collectionId]);
 
     // Mock AI Logic
     const handleSendMessage = async () => {
@@ -87,9 +87,9 @@ export function FeynmanMethod({ chapterId, courseId, bookFilename, materialId, o
         setInteractionState('AI_EVALUATING');
 
         // 2. API Call
-        if (materialId) {
+        if (collectionId) {
             try {
-                const response = await api.submitFeynman({ material_id: materialId, explanation: currentInput });
+                const response = await api.submitFeynman({ collection_id: collectionId, explanation: currentInput });
                 
                 const critique = response.feedback || "That's a good attempt. Let's dig deeper.";
                 const followUp = "Can you expand on that?"; // Backend might just give feedback

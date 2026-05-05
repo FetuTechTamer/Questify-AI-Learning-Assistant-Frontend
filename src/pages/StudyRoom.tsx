@@ -15,7 +15,7 @@ import { ActiveRecall } from "@/components/study/methods/ActiveRecall";
 import { InterleavedPractice } from "@/components/study/methods/InterleavedPractice";
 import { ReverseLearning } from "@/components/study/methods/ReverseLearning";
 import { Layout } from "@/components/layout/Layout";
-import { Material } from "@/services/api";
+import { Collection } from "@/services/api";
 
 const GenericMethod = ({ name }: { name: string }) => <div className="p-10 text-center">{name} Method Coming Soon</div>;
 
@@ -24,12 +24,12 @@ export default function StudyRoom() {
   const location = useLocation();
   const { chapterId, courseId } = location.state || {};
 
-  const [activeBook, setActiveBook] = useState<Material | null>(null);
+  const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
   const [activeMethod, setActiveMethod] = useState<StudyMethodId | null>(null);
 
-  // Step 1: Browse Books
-  if (!activeBook) {
-    return <BookSelector onSelect={setActiveBook} />;
+  // Step 1: Browse Collections
+  if (!activeCollection) {
+    return <BookSelector onSelect={setActiveCollection} />;
   }
 
   // Step 2: Choose Method
@@ -42,8 +42,8 @@ export default function StudyRoom() {
     const commonProps = {
       chapterId: chapterId || "demo-chapter",
       courseId: courseId || "demo-course",
-      bookFilename: activeBook.name || activeBook.title, // Keep for PDFViewer compatibility
-      materialId: activeBook.id, // New prop for API calls
+      bookFilename: activeCollection.title, // Keep for PDFViewer compatibility
+      collectionId: activeCollection.collection_id, // Updated prop name
       onBack: () => setActiveMethod(null) // Go back to method selector
     };
 

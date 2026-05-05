@@ -27,7 +27,7 @@ import { Layout } from "@/components/layout/Layout";
 import { cn } from "@/lib/utils";
 import { noteMethods } from "@/data/mockData";
 import { api } from "@/services/api";
-import { materialService, Material } from "@/services/materialService";
+import { collectionsService, Collection } from "@/services/collectionsService";
 import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 import NoteRoom from "./NoteRoom";
@@ -49,11 +49,11 @@ const methodVisuals: Record<string, { gradient: string; icon: any }> = {
 // ─── NoteEditor ─────────────────────────────────────────────────────────────
 interface NoteEditorProps {
   method: string;
-  materialId: string;
+  collectionId: string;
   onSaved: () => void;
 }
 
-function NoteEditor({ method, materialId, onSaved }: NoteEditorProps) {
+function NoteEditor({ method, collectionId, onSaved }: NoteEditorProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -65,7 +65,7 @@ function NoteEditor({ method, materialId, onSaved }: NoteEditorProps) {
     }
     setIsSaving(true);
     try {
-      await api.saveNote(method, { collection_id: materialId, title, content });
+      await api.saveNote(method, { collection_id: collectionId, title, content });
       toast.success("Note saved!");
       setTitle("");
       setContent("");
@@ -111,11 +111,11 @@ function NoteEditor({ method, materialId, onSaved }: NoteEditorProps) {
 // ─── NotesList ───────────────────────────────────────────────────────────────
 interface NotesListProps {
   method: string;
-  materialId: string;
+  collectionId: string;
   refreshTrigger: number;
 }
 
-function NotesList({ method, materialId, refreshTrigger }: NotesListProps) {
+function NotesList({ method, collectionId, refreshTrigger }: NotesListProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -124,7 +124,7 @@ function NotesList({ method, materialId, refreshTrigger }: NotesListProps) {
     const load = async () => {
       setIsLoading(true);
       try {
-        const data = await api.getNotes(method, materialId);
+        const data = await api.getNotes(method, collectionId);
         setNotes(Array.isArray(data) ? data : []);
       } catch {
         toast.error(`Failed to load ${method} notes.`);
@@ -134,7 +134,7 @@ function NotesList({ method, materialId, refreshTrigger }: NotesListProps) {
       }
     };
     load();
-  }, [method, materialId, refreshTrigger]);
+  }, [method, collectionId, refreshTrigger]);
 
   const handleDelete = async (noteId: string) => {
     setDeletingId(noteId);
@@ -212,11 +212,11 @@ function NotesList({ method, materialId, refreshTrigger }: NotesListProps) {
 
 // ─── Main Notes Page ─────────────────────────────────────────────────────────
 export default function Notes() {
-  const { files } = useMaterial();
-  // Material selection state
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const { collectionId: sessionCollectionId } = useMaterial();
+  // Collection selection state
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Method selection (for API-backed methods)
@@ -227,56 +227,45 @@ export default function Notes() {
   const [isNoteRoomOpen, setIsNoteRoomOpen] = useState(false);
   const [noteRoomMethod, setNoteRoomMethod] = useState<string | null>(null);
 
-  // Fetch materials on mount
+  // Fetch collections on mount
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const fetchCollections = async () => {
       try {
-        const data = await materialService.getMaterials();
-        setMaterials(data);
+        const data = await collectionsService.getCollections();
+        setCollections(data);
       } catch (error: any) {
-        console.error("--- Material Fetch Error (Notes Page) ---");
-        console.error("URL: /api/material/");
-        if (error.response) {
-          console.error("Status Code:", error.response.status);
-          console.error("Response Text:", JSON.stringify(error.response.data));
-        } else {
-          console.error("Error Object:", error);
-        }
-        console.error("-----------------------------------------");
-
-        // Fallback to session files
-        const fallbackMaterials: Material[] = files
-          .filter(f => f.status === "done")
-          .map(f => ({
-            id: f.id,
-            title: f.name,
-            name: f.name,
-            description: "Session Upload",
+        console.error("--- Collection Fetch Error (Notes Page) ---");
+        console.error("URL: /api/collections/");
+        
+        // Fallback to session collection if available
+        if (sessionCollectionId) {
+          const fallbackCollection: Collection = {
+            collection_id: sessionCollectionId,
+            title: "Current Session Collection",
+            description: "Materials you just uploaded and processed",
             created_at: new Date().toISOString()
-          }));
-
-        if (fallbackMaterials.length > 0) {
-          setMaterials(fallbackMaterials);
-          toast.info("Unable to load all materials from server. Showing your uploaded files from this session.");
+          };
+          setCollections([fallbackCollection]);
+          toast.info("Using collection from your current session.");
         } else {
-          toast.error("Failed to load your materials. Please try again.");
+          toast.error("Failed to load your study collections. Please try again.");
         }
       } finally {
-        setIsLoadingMaterials(false);
+        setIsLoadingCollections(false);
       }
     };
-    fetchMaterials();
-  }, []);
+    fetchCollections();
+  }, [sessionCollectionId]);
 
-  const selectedMaterial = materials.find((m) => m.id === selectedMaterialId);
+  const selectedCollection = collections.find((c) => c.collection_id === selectedCollectionId);
 
-  const filteredMaterials = materials.filter((m) =>
-    (m.title || m.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCollections = collections.filter((c) =>
+    (c.title || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleLaunch = () => {
-    if (!selectedMaterialId || !selectedMethodId) {
-      toast.error("Please select both a material and a note method.");
+    if (!selectedCollectionId || !selectedMethodId) {
+      toast.error("Please select both a collection and a note method.");
       return;
     }
 
@@ -310,7 +299,7 @@ export default function Notes() {
 
   // Inline API note-taking view
   const isApiMethod = selectedMethodId && API_METHODS.includes(selectedMethodId);
-  if (isApiMethod && selectedMaterialId) {
+  if (isApiMethod && selectedCollectionId) {
     const visual = methodVisuals[selectedMethodId] || methodVisuals["outline"];
     const IconComponent = visual.icon;
 
@@ -326,14 +315,14 @@ export default function Notes() {
                 {selectedMethodId.replace("-", " ")} Notes
               </h1>
               <p className="text-sm text-muted-foreground">
-                {selectedMaterial?.title || selectedMaterial?.name}
+                {selectedCollection?.title}
               </p>
             </div>
           </div>
 
           <NoteEditor
             method={selectedMethodId}
-            materialId={selectedMaterialId}
+            collectionId={selectedCollectionId}
             onSaved={() => setRefreshTrigger((t) => t + 1)}
           />
 
@@ -343,7 +332,7 @@ export default function Notes() {
             </h2>
             <NotesList
               method={selectedMethodId}
-              materialId={selectedMaterialId}
+              collectionId={selectedCollectionId}
               refreshTrigger={refreshTrigger}
             />
           </div>
@@ -360,13 +349,13 @@ export default function Notes() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Cognitive Studio</h1>
             <p className="text-muted-foreground mt-1">
-              Select your material and a structured note-taking method
+              Select your study collection and a structured note-taking method
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full">
               <Books className="w-3.5 h-3.5" />
-              {materials.length} Materials
+              {collections.length} Collections
             </Badge>
             <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full">
               <Brain className="w-3.5 h-3.5" />
@@ -376,16 +365,16 @@ export default function Notes() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
-          {/* ── Left: Material Selection ─────────────────────────── */}
+          {/* ── Left: Collection Selection ─────────────────────────── */}
           <div className="lg:col-span-4 space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-2">
-              <AlignLeft className="w-4 h-4" /> Select Material
+              <AlignLeft className="w-4 h-4" /> Select Collection
             </h2>
 
             <div className="relative">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search materials..."
+                placeholder="Search collections..."
                 className="pl-10 h-9 rounded-lg border-none bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/20"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -393,37 +382,37 @@ export default function Notes() {
             </div>
 
             {/* Loading skeletons */}
-            {isLoadingMaterials ? (
+            {isLoadingCollections ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
                 ))}
               </div>
-            ) : materials.length === 0 ? (
+            ) : collections.length === 0 ? (
               /* Empty state — consistent with Exam page */
               <Card className="p-8 text-center border-dashed">
                 <div className="w-14 h-14 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
                   <GraduationCap className="w-7 h-7 text-muted-foreground" />
                 </div>
-                <h3 className="text-base font-bold mb-1">No materials found</h3>
+                <h3 className="text-base font-bold mb-1">No collections found</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Upload some study materials first to generate note.
+                  Upload some study materials first and process them into a collection.
                 </p>
                 <Button asChild size="sm">
-                  <Link to="/upload">Upload Material</Link>
+                  <Link to="/upload">Upload & Process</Link>
                 </Button>
               </Card>
-            ) : filteredMaterials.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-2">No materials match your search.</p>
+            ) : filteredCollections.length === 0 ? (
+              <p className="text-sm text-muted-foreground px-2">No collections match your search.</p>
             ) : (
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
-                {filteredMaterials.map((material) => (
+                {filteredCollections.map((collection) => (
                   <button
-                    key={material.id}
-                    onClick={() => setSelectedMaterialId(material.id)}
+                    key={collection.collection_id}
+                    onClick={() => setSelectedCollectionId(collection.collection_id)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg transition-all duration-200 border relative group",
-                      selectedMaterialId === material.id
+                      selectedCollectionId === collection.collection_id
                         ? "bg-primary/10 border-primary text-primary shadow-sm"
                         : "bg-card border-transparent hover:bg-accent/50 text-muted-foreground hover:text-foreground"
                     )}
@@ -432,18 +421,18 @@ export default function Notes() {
                       <div
                         className={cn(
                           "w-2 h-2 rounded-full shrink-0",
-                          selectedMaterialId === material.id
+                          selectedCollectionId === collection.collection_id
                             ? "bg-primary"
                             : "bg-muted-foreground/30"
                         )}
                       />
                       <div className="min-w-0">
                         <h3 className="font-bold text-sm leading-tight truncate">
-                          {material.title || material.name}
+                          {collection.title}
                         </h3>
-                        {material.description && (
+                        {collection.description && (
                           <p className="text-[10px] opacity-60 truncate mt-0.5">
-                            {material.description}
+                            {collection.description}
                           </p>
                         )}
                       </div>
@@ -516,9 +505,9 @@ export default function Notes() {
                 </p>
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="font-bold truncate max-w-[160px]">
-                    {selectedMaterialId
-                      ? selectedMaterial?.title || selectedMaterial?.name
-                      : "Select a material"}
+                    {selectedCollectionId
+                      ? selectedCollection?.title
+                      : "Select a collection"}
                   </span>
                   <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="font-bold text-primary">
@@ -532,7 +521,7 @@ export default function Notes() {
               <Button
                 size="lg"
                 onClick={handleLaunch}
-                disabled={!selectedMaterialId || !selectedMethodId}
+                disabled={!selectedCollectionId || !selectedMethodId}
                 className="rounded-full px-10 h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
               >
                 {selectedMethodId && API_METHODS.includes(selectedMethodId)

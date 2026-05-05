@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/services/api";
 import { toast } from "sonner";
 
-export function SQ3RMethod({ onBack, chapterId, materialId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; materialId?: string }) {
+export function SQ3RMethod({ onBack, chapterId, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
     const [step, setStep] = useState<0 | 1 | 2 | 3 | 4>(0);
     const STEPS = [
         { id: 'survey', label: 'Survey', icon: MagnifyingGlass, desc: "Skim headings and summaries." },
@@ -30,14 +30,14 @@ export function SQ3RMethod({ onBack, chapterId, materialId }: { onBack: () => vo
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!materialId) {
+        if (!collectionId) {
             setIsLoading(false);
             return;
         }
 
         const fetchData = async () => {
             try {
-                const data = await api.getSQ3RData(materialId);
+                const data = await api.getSQ3RData(collectionId);
                 if (data && data.sections && data.sections.length > 0) {
                     setContent(data);
                 }
@@ -53,15 +53,15 @@ export function SQ3RMethod({ onBack, chapterId, materialId }: { onBack: () => vo
         };
 
         fetchData();
-    }, [materialId]);
+    }, [collectionId]);
 
     const handleNext = async () => {
         const nextStep = (step + 1) as 0 | 1 | 2 | 3 | 4;
         if (step < 4) {
             setStep(nextStep);
-            if (materialId) {
+            if (collectionId) {
                 try {
-                    await api.saveSQ3RProgress({ material_id: materialId, step: STEPS[nextStep].id, data: {} });
+                    await api.saveSQ3RProgress({ collection_id: collectionId, step: STEPS[nextStep].id, data: {} });
                 } catch (err) {
                     console.error("Failed to save progress", err);
                 }

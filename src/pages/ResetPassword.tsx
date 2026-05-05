@@ -52,7 +52,8 @@ const ResetPassword = () => {
       navigate("/auth");
     } catch (error: any) {
       console.error("Reset password error:", error);
-      toast.error(error.response?.data?.message || "Failed to reset password");
+      const errorMsg = error.response?.data?.message || error.response?.data?.detail || error.message || "Failed to reset password";
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

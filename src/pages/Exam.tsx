@@ -27,16 +27,16 @@ import { cn } from "@/lib/utils";
 import { questionTypes } from "@/data/mockData";
 import ExamRoom from "./ExamRoom";
 import { api, ExamQuestion, SubmitResponse } from "@/services/api";
-import { materialService, Material } from "@/services/materialService";
+import { collectionsService, Collection } from "@/services/collectionsService";
 import { useMaterial } from "@/contexts/MaterialContext";
 import { toast } from "sonner";
 
 export default function Exam() {
-  const { files } = useMaterial();
+  const { collectionId: sessionCollectionId } = useMaterial();
   const [step, setStep] = useState<"configure" | "exam">("configure");
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [activeMaterialId, setActiveMaterialId] = useState<string | null>(null);
-  const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -56,46 +56,35 @@ export default function Exam() {
     difficulty: 'medium' as 'easy' | 'medium' | 'hard' | 'mixed',
   });
 
-  // Fetch materials on mount
+  // Fetch collections on mount
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const fetchCollections = async () => {
       try {
-        const data = await materialService.getMaterials();
-        setMaterials(data);
+        const data = await collectionsService.getCollections();
+        setCollections(data);
       } catch (error: any) {
-        console.error("--- Material Fetch Error (Exam Page) ---");
-        console.error("URL: /api/material/");
-        if (error.response) {
-          console.error("Status Code:", error.response.status);
-          console.error("Response Text:", JSON.stringify(error.response.data));
-        } else {
-          console.error("Error Object:", error);
-        }
-        console.error("----------------------------------------");
-
-        // Fallback to session files
-        const fallbackMaterials: Material[] = files
-          .filter(f => f.status === "done")
-          .map(f => ({
-            id: f.id,
-            title: f.name,
-            name: f.name,
-            description: "Session Upload",
+        console.error("--- Collection Fetch Error (Exam Page) ---");
+        console.error("URL: /api/collections/");
+        
+        // Fallback to session collection if available
+        if (sessionCollectionId) {
+          const fallbackCollection: Collection = {
+            collection_id: sessionCollectionId,
+            title: "Current Session Collection",
+            description: "Materials you just uploaded and processed",
             created_at: new Date().toISOString()
-          }));
-
-        if (fallbackMaterials.length > 0) {
-          setMaterials(fallbackMaterials);
-          toast.info("Unable to load all materials from server. Showing your uploaded files from this session.");
+          };
+          setCollections([fallbackCollection]);
+          toast.info("Using collection from your current session.");
         } else {
-          toast.error("Failed to load your materials. Please try again.");
+          toast.error("Failed to load your study collections. Please try again.");
         }
       } finally {
-        setIsLoadingMaterials(false);
+        setIsLoadingCollections(false);
       }
     };
-    fetchMaterials();
-  }, []);
+    fetchCollections();
+  }, [sessionCollectionId]);
 
   // Timer logic
   useEffect(() => {
@@ -118,15 +107,15 @@ export default function Exam() {
     };
   }, [step, isFinished, timeLeft]);
 
-  const selectedMaterial = materials.find((m) => m.id === activeMaterialId);
+  const selectedCollection = collections.find((c) => c.collection_id === activeCollectionId);
 
   const handleStart = async () => {
-    if (!activeMaterialId) return;
+    if (!activeCollectionId) return;
     
     setIsGenerating(true);
     try {
       const examData = await api.generateExam({
-        material_id: activeMaterialId,
+        collection_id: activeCollectionId,
         question_count: config.questionCount,
         difficulty: config.difficulty === 'mixed' ? undefined : config.difficulty
       });
@@ -209,39 +198,39 @@ export default function Exam() {
 
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
-            {/* Step 1: Material Selection */}
+            {/* Step 1: Collection Selection */}
             <section>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">1</div>
-                <h2 className="text-xl font-bold">Select Study Material</h2>
+                <h2 className="text-xl font-bold">Select Study Collection</h2>
               </div>
 
-              {isLoadingMaterials ? (
+              {isLoadingCollections ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1, 2, 3, 4].map(i => (
                     <div key={i} className="h-32 rounded-lg bg-muted animate-pulse" />
                   ))}
                 </div>
-              ) : materials.length === 0 ? (
+              ) : collections.length === 0 ? (
                 <Card className="p-12 text-center border-dashed">
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                     <GraduationCap className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-bold mb-2">No materials found</h3>
-                  <p className="text-muted-foreground mb-6">Upload some study materials first to generate an exam.</p>
+                  <h3 className="text-lg font-bold mb-2">No collections found</h3>
+                  <p className="text-muted-foreground mb-6">Upload some study materials first and process them into a collection.</p>
                   <Button asChild>
-                    <Link to="/upload">Upload Material</Link>
+                    <Link to="/upload">Upload & Process</Link>
                   </Button>
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {materials.map((material) => (
+                  {collections.map((collection) => (
                     <button
-                      key={material.id}
-                      onClick={() => setActiveMaterialId(material.id)}
+                      key={collection.collection_id}
+                      onClick={() => setActiveCollectionId(collection.collection_id)}
                       className={cn(
                         "group relative p-4 rounded-lg border transition-all duration-300 text-left h-full",
-                        activeMaterialId === material.id
+                        activeCollectionId === collection.collection_id
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
                           : "bg-card hover:bg-accent/50 border-border"
                       )}
@@ -249,15 +238,15 @@ export default function Exam() {
                       <div className="flex items-start gap-4">
                         <div className={cn(
                           "w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300",
-                          activeMaterialId === material.id ? "bg-primary text-primary-foreground scale-110" : "bg-muted group-hover:scale-110"
+                          activeCollectionId === collection.collection_id ? "bg-primary text-primary-foreground scale-110" : "bg-muted group-hover:scale-110"
                         )}>
-                          {material.icon || <GraduationCap weight="fill" />}
+                          {collection.icon || <GraduationCap weight="fill" />}
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-lg mb-1">{material.title || material.name}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{material.description}</p>
+                          <h3 className="font-bold text-lg mb-1">{collection.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
                         </div>
-                        {activeMaterialId === material.id && (
+                        {activeCollectionId === collection.collection_id && (
                           <CheckCircle className="w-6 h-6 text-primary absolute top-4 right-4" weight="fill" />
                         )}
                       </div>
@@ -268,7 +257,7 @@ export default function Exam() {
             </section>
 
             {/* Step 2: Customization */}
-            <section className={cn("transition-all duration-500", !activeMaterialId && "opacity-50 pointer-events-none")}>
+            <section className={cn("transition-all duration-500", !activeCollectionId && "opacity-50 pointer-events-none")}>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">2</div>
                 <h2 className="text-xl font-bold">Customize Assessment</h2>
@@ -334,7 +323,7 @@ export default function Exam() {
                     ))}
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-4 italic">
-                    Note: Question types depend on material content and AI availability.
+                    Note: Question types depend on collection content and AI availability.
                   </p>
                 </div>
               </div>
@@ -354,9 +343,9 @@ export default function Exam() {
                 <CardContent className="pt-6 space-y-6">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-sm text-muted-foreground">Material</span>
+                      <span className="text-sm text-muted-foreground">Collection</span>
                       <span className="text-sm font-bold truncate max-w-[150px]">
-                        {selectedMaterial?.title || selectedMaterial?.name || "Not Selected"}
+                        {selectedCollection?.title || "Not Selected"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -374,13 +363,13 @@ export default function Exam() {
                   <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
                     <Sparkle className="w-4 h-4 text-primary shrink-0 mt-0.5" weight="fill" />
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Questy AI will generate fresh questions based on your specific study material.
+                      Questy AI will generate fresh questions based on your specific study collection.
                     </p>
                   </div>
 
                   <Button
                     className="w-full py-6 text-lg font-bold rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
-                    disabled={!activeMaterialId || isGenerating}
+                    disabled={!activeCollectionId || isGenerating}
                     onClick={handleStart}
                   >
                     {isGenerating ? (
@@ -419,3 +408,4 @@ export default function Exam() {
     </Layout>
   );
 }
+

@@ -17,11 +17,11 @@ interface PomodoroMethodProps {
     chapterId: string;
     courseId: string;
     bookFilename?: string; // New prop
-    materialId?: string; // ID for API
+    collectionId?: string; // ID for API
     onBack: () => void;
 }
 
-export function PomodoroMethod({ chapterId, courseId, bookFilename, materialId, onBack }: PomodoroMethodProps) {
+export function PomodoroMethod({ chapterId, courseId, bookFilename, collectionId, onBack }: PomodoroMethodProps) {
     // Timer State
     const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes
     const [timerState, setTimerState] = useState<TimerState>('IDLE');
@@ -35,14 +35,14 @@ export function PomodoroMethod({ chapterId, courseId, bookFilename, materialId, 
 
     // --- API Logic ---
     useEffect(() => {
-        if (!materialId) {
+        if (!collectionId) {
             setIsLoading(false);
             return;
         }
 
         const fetchStats = async () => {
             try {
-                const stats = await api.getPomodoroStats(materialId);
+                const stats = await api.getPomodoroStats(collectionId);
                 if (stats && stats.completed_sessions) {
                     setCycleCount(stats.completed_sessions);
                 }
@@ -55,7 +55,7 @@ export function PomodoroMethod({ chapterId, courseId, bookFilename, materialId, 
         };
 
         fetchStats();
-    }, [materialId]);
+    }, [collectionId]);
 
     // --- Timer Logic ---
     useEffect(() => {
@@ -79,9 +79,9 @@ export function PomodoroMethod({ chapterId, courseId, bookFilename, materialId, 
             setTimeLeft(5 * 60); // 5 min break
             new Audio('/sounds/bell.mp3').play().catch(() => { }); // Mock sound
 
-            if (materialId) {
+            if (collectionId) {
                 try {
-                    await api.recordPomodoro({ material_id: materialId, duration: 25, completed: true });
+                    await api.recordPomodoro({ collection_id: collectionId, duration: 25, completed: true });
                     toast.success("Pomodoro session recorded!");
                 } catch (err) {
                     console.error("Failed to save pomodoro", err);

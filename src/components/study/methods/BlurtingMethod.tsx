@@ -4,13 +4,11 @@ import { Sparkle, Timer, Eye, EyeSlash, Check, Warning } from "@phosphor-icons/r
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { NoteContent } from "@/types/notes";
 
 type BlurtingPhase = 'READ' | 'BLURT' | 'REVIEW';
 
-export function BlurtingMethod({ onBack, chapterId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function BlurtingMethod({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
     const [phase, setPhase] = useState<BlurtingPhase>('READ');
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes initial read
     const [userNotes, setUserNotes] = useState("");
@@ -28,7 +26,7 @@ export function BlurtingMethod({ onBack, chapterId }: { onBack: () => void; book
             handleStartBlurting();
         }
         return () => clearInterval(interval);
-    }, [isTimerRunning, timeLeft, phase]);
+    }, [isTimerRunning, timeLeft, phase, collectionId]);
 
     const formatTime = (secs: number) => {
         const m = Math.floor(secs / 60);

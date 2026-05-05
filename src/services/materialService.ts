@@ -72,9 +72,6 @@ export const materialService = {
     }
   },
 
-  delete: async (materialId: string): Promise<void> => {
-    await apiClient.delete(`/api/material/${materialId}`);
-  },
 
   preprocess: async (materialIds: string[]): Promise<PreprocessResponse> => {
     console.log('--- Preprocess Request Start ---');
@@ -125,29 +122,6 @@ export const materialService = {
     } catch (error: any) {
       console.error('--- Analyze Request End (Error) ---');
       console.error('Analyze error details:', error);
-      throw error;
-    }
-  },
-
-  getMaterials: async (): Promise<Material[]> => {
-    console.log('Fetching materials list from /api/material/');
-    try {
-      // Calling with exact trailing slash as required by backend
-      const response = await apiClient.get('/api/material/');
-      console.log('Materials fetch success:', response.data);
-      return response.data.data || response.data;
-    } catch (error: any) {
-      console.error('Failed to fetch materials from /api/material/:', error);
-      throw error;
-    }
-  },
-
-  getMaterial: async (id: string): Promise<Material> => {
-    try {
-      const response = await apiClient.get(`/api/material/${id}`);
-      return response.data.data || response.data;
-    } catch (error) {
-      console.error(`Failed to fetch material ${id}:`, error);
       throw error;
     }
   },

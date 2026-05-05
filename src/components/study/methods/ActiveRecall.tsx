@@ -11,7 +11,7 @@ import { MOCK_FLASHCARDS } from "@/data/mockFlashcards"; // Reusing for content 
 import { api } from "@/services/api";
 import { toast } from "sonner";
 
-export function ActiveRecall({ onBack, bookFilename, materialId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; materialId?: string }) {
+export function ActiveRecall({ onBack, bookFilename, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isAnswerVisible, setIsAnswerVisible] = useState(false);
     const [score, setScore] = useState({ correct: 0, total: 0 });
@@ -23,14 +23,14 @@ export function ActiveRecall({ onBack, bookFilename, materialId }: { onBack: () 
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!materialId) {
+        if (!collectionId) {
             setIsLoading(false);
             return;
         }
 
         const fetchQuestions = async () => {
             try {
-                const data = await api.getActiveRecallData(materialId);
+                const data = await api.getActiveRecallData(collectionId);
                 if (data && data.questions && data.questions.length > 0) {
                     setQuestions(data.questions);
                 }
@@ -42,7 +42,7 @@ export function ActiveRecall({ onBack, bookFilename, materialId }: { onBack: () 
         };
 
         fetchQuestions();
-    }, [materialId]);
+    }, [collectionId]);
 
     const currentQ = questions[currentIndex];
     const isComplete = currentIndex >= questions.length && questions.length > 0;
@@ -53,9 +53,9 @@ export function ActiveRecall({ onBack, bookFilename, materialId }: { onBack: () 
             total: prev.total + 1
         }));
 
-        if (materialId && currentQ) {
+        if (collectionId && currentQ) {
             try {
-                await api.saveActiveRecallResult({ material_id: materialId, question_id: currentQ.id, result: correct });
+                await api.saveActiveRecallResult({ collection_id: collectionId, question_id: currentQ.id, result: correct });
             } catch (err) {
                 console.error("Failed to save result", err);
                 toast.error("Failed to save progress");

@@ -33,7 +33,8 @@ const ForgotPassword = () => {
       navigate("/reset-password", { state: { email } });
     } catch (error: any) {
       console.error("Forgot password error:", error);
-      toast.error(error.response?.data?.message || "Failed to send reset code");
+      const errorMsg = error.response?.data?.message || error.response?.data?.detail || error.message || "Failed to send reset code";
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

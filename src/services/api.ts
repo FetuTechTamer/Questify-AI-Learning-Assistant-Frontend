@@ -1,9 +1,8 @@
 import apiClient from './apiClient';
 
-export interface Material {
-  id: string;
+export interface Collection {
+  collection_id: string;
   title: string;
-  name?: string; // Fallback for name if backend uses title
   description: string;
   icon?: string;
   color?: string;
@@ -34,21 +33,9 @@ export interface SubmitResponse {
 }
 
 export const api = {
-  // Materials
-  getMaterials: async (): Promise<Material[]> => {
-    const response = await apiClient.get('/api/material/');
-    // Assuming backend returns { data: [...] } or just [...]
-    return response.data.data || response.data;
-  },
-
-  getMaterial: async (id: string): Promise<Material> => {
-    const response = await apiClient.get(`/api/material/${id}`);
-    return response.data.data || response.data;
-  },
-
   // Exams
   generateExam: async (params: { 
-    material_id: string; 
+    collection_id: string; 
     question_count: number; 
     difficulty?: string 
   }): Promise<ExamData> => {
@@ -65,48 +52,48 @@ export const api = {
   },
 
   // Study Methods
-  recordPomodoro: async (params: { material_id: string; duration: number; completed: boolean }) => {
+  recordPomodoro: async (params: { collection_id: string; duration: number; completed: boolean }) => {
     const response = await apiClient.post('/api/study/pomodoro', params);
     return response.data;
   },
-  getPomodoroStats: async (material_id: string): Promise<any> => {
-    const response = await apiClient.get(`/api/study/pomodoro/${material_id}`);
+  getPomodoroStats: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/pomodoro/${collection_id}`);
     return response.data.data || response.data;
   },
 
-  submitFeynman: async (params: { material_id: string; explanation: string }): Promise<any> => {
+  submitFeynman: async (params: { collection_id: string; explanation: string }): Promise<any> => {
     const response = await apiClient.post('/api/study/feynman', params);
     return response.data.data || response.data;
   },
-  getFeynmanData: async (material_id: string): Promise<any> => {
-    const response = await apiClient.get(`/api/study/feynman/${material_id}`);
+  getFeynmanData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/feynman/${collection_id}`);
     return response.data.data || response.data;
   },
 
-  updateLeitnerProgress: async (params: { material_id: string; card_id: string; success: boolean }) => {
+  updateLeitnerProgress: async (params: { collection_id: string; card_id: string; success: boolean }) => {
     const response = await apiClient.post('/api/study/leitner', params);
     return response.data;
   },
-  getLeitnerState: async (material_id: string): Promise<any> => {
-    const response = await apiClient.get(`/api/study/leitner/${material_id}`);
+  getLeitnerState: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/leitner/${collection_id}`);
     return response.data.data || response.data;
   },
 
-  saveSQ3RProgress: async (params: { material_id: string; step: string; data: any }) => {
+  saveSQ3RProgress: async (params: { collection_id: string; step: string; data: any }) => {
     const response = await apiClient.post('/api/study/sq3r', params);
     return response.data;
   },
-  getSQ3RData: async (material_id: string): Promise<any> => {
-    const response = await apiClient.get(`/api/study/sq3r/${material_id}`);
+  getSQ3RData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/sq3r/${collection_id}`);
     return response.data.data || response.data;
   },
 
-  saveActiveRecallResult: async (params: { material_id: string; question_id: string; result: any }) => {
+  saveActiveRecallResult: async (params: { collection_id: string; question_id: string; result: any }) => {
     const response = await apiClient.post('/api/study/active-recall', params);
     return response.data;
   },
-  getActiveRecallData: async (material_id: string): Promise<any> => {
-    const response = await apiClient.get(`/api/study/active-recall/${material_id}`);
+  getActiveRecallData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/active-recall/${collection_id}`);
     return response.data.data || response.data;
   },
 
