@@ -34,14 +34,6 @@ export function ActiveRecall({ onBack, bookFilename, collectionId }: { onBack: (
                 if (data && data.questions && data.questions.length > 0) {
                     setQuestions(data.questions);
                 }
-                if (data && data.progress) {
-                    if (typeof data.progress.currentIndex === 'number') {
-                        setCurrentIndex(data.progress.currentIndex);
-                    }
-                    if (data.progress.score) {
-                        setScore(data.progress.score);
-                    }
-                }
             } catch (err) {
                 console.error("Failed to load active recall questions", err);
             } finally {

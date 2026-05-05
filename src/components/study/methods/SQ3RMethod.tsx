@@ -42,14 +42,11 @@ export function SQ3RMethod({ onBack, chapterId, collectionId }: { onBack: () => 
                     setContent(data);
                 }
                 if (data && data.progress && data.progress.step) {
-                    // Map backend step ID to local index
-                    const savedStepIndex = STEPS.findIndex(s => s.id === data.progress.step);
-                    if (savedStepIndex !== -1) {
-                        setStep(savedStepIndex as 0 | 1 | 2 | 3 | 4);
-                    }
+                    setStep(data.progress.step);
                 }
             } catch (err) {
                 console.error(err);
+                // toast.error("Failed to load SQ3R data");
             } finally {
                 setIsLoading(false);
             }

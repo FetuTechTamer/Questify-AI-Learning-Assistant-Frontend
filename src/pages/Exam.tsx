@@ -177,7 +177,7 @@ export default function Exam() {
           onReset={() => setStep("configure")}
         />
         {isSubmitting && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center">
             <CircleNotch className="w-12 h-12 text-primary animate-spin mb-4" weight="bold" />
             <p className="text-lg font-bold">Submitting your answers...</p>
           </div>
@@ -188,21 +188,21 @@ export default function Exam() {
 
   return (
     <Layout title="Exam Room">
-      <div className="container py-4 max-w-5xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+      <div className="container py-4 max-w-5xl px-4 sm:px-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 text-center md:text-left">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Exam Room</h1>
-            <p className="text-muted-foreground mt-1">Configure and start your practice assessment</p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Exam Room</h1>
+            <p className="text-sm text-muted-foreground mt-1">Configure and start your practice assessment</p>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
             {/* Step 1: Collection Selection */}
             <section>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">1</div>
-                <h2 className="text-xl font-bold">Select Study Collection</h2>
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">1</div>
+                <h2 className="text-lg md:text-xl font-bold">Select Study Collection</h2>
               </div>
 
               {isLoadingCollections ? (
@@ -212,42 +212,42 @@ export default function Exam() {
                   ))}
                 </div>
               ) : collections.length === 0 ? (
-                <Card className="p-12 text-center border-dashed">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <GraduationCap className="w-8 h-8 text-muted-foreground" />
+                <Card className="p-8 md:p-12 text-center border-dashed">
+                  <div className="w-14 h-14 md:w-16 md:h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <GraduationCap className="w-7 h-7 md:w-8 md:h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-bold mb-2">No collections found</h3>
-                  <p className="text-muted-foreground mb-6">Upload some study materials first and process them into a collection.</p>
-                  <Button asChild>
+                  <h3 className="text-base md:text-lg font-bold mb-2">No collections found</h3>
+                  <p className="text-sm text-muted-foreground mb-6">Upload some study materials first and process them into a collection.</p>
+                  <Button asChild size="sm">
                     <Link to="/upload">Upload & Process</Link>
                   </Button>
                 </Card>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {collections.map((collection) => (
                     <button
                       key={collection.collection_id}
                       onClick={() => setActiveCollectionId(collection.collection_id)}
                       className={cn(
-                        "group relative p-4 rounded-lg border transition-all duration-300 text-left h-full",
+                        "group relative p-4 rounded-xl border transition-all duration-300 text-left h-full",
                         activeCollectionId === collection.collection_id
                           ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
                           : "bg-card hover:bg-accent/50 border-border"
                       )}
                     >
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3 md:gap-4">
                         <div className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center text-2xl transition-transform duration-300",
+                          "w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-transform duration-300 shrink-0",
                           activeCollectionId === collection.collection_id ? "bg-primary text-primary-foreground scale-110" : "bg-muted group-hover:scale-110"
                         )}>
                           {collection.icon || <GraduationCap weight="fill" />}
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg mb-1">{collection.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-2">{collection.description}</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-sm md:text-lg mb-1 truncate">{collection.title}</h3>
+                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 leading-snug">{collection.description}</p>
                         </div>
                         {activeCollectionId === collection.collection_id && (
-                          <CheckCircle className="w-6 h-6 text-primary absolute top-4 right-4" weight="fill" />
+                          <CheckCircle className="w-5 h-5 text-primary absolute top-4 right-4" weight="fill" />
                         )}
                       </div>
                     </button>
@@ -259,20 +259,20 @@ export default function Exam() {
             {/* Step 2: Customization */}
             <section className={cn("transition-all duration-500", !activeCollectionId && "opacity-50 pointer-events-none")}>
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">2</div>
-                <h2 className="text-xl font-bold">Customize Assessment</h2>
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">2</div>
+                <h2 className="text-lg md:text-xl font-bold">Customize Assessment</h2>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <Card className="rounded-lg border">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Configuration</CardTitle>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="rounded-xl border">
+                  <CardHeader className="pb-3 px-4">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Configuration</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-6 px-4">
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Questions</label>
-                        <span className="text-lg font-bold">{config.questionCount}</span>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Questions</label>
+                        <span className="text-base font-bold">{config.questionCount}</span>
                       </div>
                       <Slider
                         value={[config.questionCount]}
@@ -282,14 +282,14 @@ export default function Exam() {
                     </div>
 
                     <div className="space-y-3">
-                      <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">Difficulty</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Difficulty</label>
                       <div className="grid grid-cols-4 gap-2">
                         {['easy', 'medium', 'hard', 'mixed'].map(level => (
                           <button
                             key={level}
                             onClick={() => setConfig(p => ({ ...p, difficulty: level as any }))}
                             className={cn(
-                              "py-2 px-1 text-[10px] uppercase font-bold rounded-lg border transition-all",
+                              "py-2 px-1 text-[9px] md:text-[10px] uppercase font-bold rounded-lg border transition-all truncate",
                               config.difficulty === level
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
@@ -303,14 +303,14 @@ export default function Exam() {
                   </CardContent>
                 </Card>
 
-                <div className="p-4 rounded-2xl bg-muted/50 border ">
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Included Types</p>
+                <div className="p-4 rounded-xl bg-muted/50 border ">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Included Types</p>
                   <div className="flex flex-wrap gap-2">
                     {questionTypes.map(t => (
                       <Badge
                         key={t.id}
                         variant={config.questionTypes.includes(t.id) ? "default" : "outline"}
-                        className="cursor-pointer py-1 px-3 rounded-full transition-all"
+                        className="cursor-pointer py-1 px-3 rounded-full transition-all text-[9px] md:text-xs"
                         onClick={() => setConfig(p => ({
                           ...p,
                           questionTypes: p.questionTypes.includes(t.id)
@@ -322,7 +322,7 @@ export default function Exam() {
                       </Badge>
                     ))}
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-4 italic">
+                  <p className="text-[9px] md:text-[10px] text-muted-foreground mt-4 italic leading-tight">
                     Note: Question types depend on collection content and AI availability.
                   </p>
                 </div>
@@ -331,76 +331,78 @@ export default function Exam() {
           </div>
 
           <div className="lg:col-span-4">
-            <div className="sticky top-24 space-y-4">
-              <Card className="rounded-lg  border overflow-hidden glass-card">
-                <CardHeader className="bg-primary/5 pb-4">
-                  <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <RocketLaunch className="w-6 h-6 text-primary" weight="fill" />
+            <div className="lg:sticky lg:top-24 space-y-4">
+              <Card className="rounded-xl border overflow-hidden glass-card">
+                <CardHeader className="bg-primary/5 pb-4 px-4 md:px-6">
+                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-bold">
+                    <RocketLaunch className="w-5 h-5 md:w-6 md:h-6 text-primary" weight="fill" />
                     Launch Exam
                   </CardTitle>
-                  <CardDescription>Review your configuration before initiating</CardDescription>
+                  <CardDescription className="text-xs">Review your configuration before initiating</CardDescription>
                 </CardHeader>
-                <CardContent className="pt-6 space-y-6">
+                <CardContent className="pt-6 space-y-6 px-4 md:px-6">
                   <div className="space-y-3">
                     <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-sm text-muted-foreground">Collection</span>
-                      <span className="text-sm font-bold truncate max-w-[150px]">
+                      <span className="text-xs text-muted-foreground">Collection</span>
+                      <span className="text-xs font-bold truncate max-w-[120px] md:max-w-[150px]">
                         {selectedCollection?.title || "Not Selected"}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 rounded-xl bg-muted/50 text-center">
-                        <span className="text-xs text-muted-foreground block">Questions</span>
-                        <span className="text-xl font-bold">{config.questionCount}</span>
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="p-2 md:p-3 rounded-xl bg-muted/50 text-center">
+                        <span className="text-[10px] text-muted-foreground block">Questions</span>
+                        <span className="text-lg md:text-xl font-bold">{config.questionCount}</span>
                       </div>
-                      <div className="p-3 rounded-xl bg-muted/50 text-center">
-                        <span className="text-xs text-muted-foreground block">Est. Time</span>
-                        <span className="text-xl font-bold">{Math.round(config.questionCount * 1.5)}m</span>
+                      <div className="p-2 md:p-3 rounded-xl bg-muted/50 text-center">
+                        <span className="text-[10px] text-muted-foreground block">Est. Time</span>
+                        <span className="text-lg md:text-xl font-bold">{Math.round(config.questionCount * 1.5)}m</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
+                  <div className="p-3 md:p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
                     <Sparkle className="w-4 h-4 text-primary shrink-0 mt-0.5" weight="fill" />
-                    <p className="text-xs text-muted-foreground leading-relaxed">
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
                       Questy AI will generate fresh questions based on your specific study collection.
                     </p>
                   </div>
 
                   <Button
-                    className="w-full py-6 text-lg font-bold rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                    className="w-full py-5 md:py-6 text-base md:text-lg font-bold rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
                     disabled={!activeCollectionId || isGenerating}
                     onClick={handleStart}
                   >
                     {isGenerating ? (
                       <>
-                        <CircleNotch className="mr-2 w-5 h-5 animate-spin" weight="bold" />
+                        <CircleNotch className="mr-2 w-4 h-4 md:w-5 md:h-5 animate-spin" weight="bold" />
                         Generating...
                       </>
                     ) : (
                       <>
                         Start Assessment
-                        <CaretRight className="ml-2 w-5 h-5" />
+                        <CaretRight className="ml-2 w-4 h-4 md:w-5 md:h-5" />
                       </>
                     )}
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-none shadow-sm bg-accent/50">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground">
-                    <Brain className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium leading-none">AI Study Partner</p>
-                    <p className="text-xs text-muted-foreground mt-1">Chat for quick revision</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="rounded-full" asChild>
-                    <Link to="/questy-chat"><ArrowRight className="w-4 h-4" /></Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <Link to="/questy-chat" className="block transition-transform active:scale-[0.98]">
+                <Card className="rounded-xl border-none shadow-sm bg-accent/50 hover:bg-accent/70 transition-colors cursor-pointer">
+                  <CardContent className="p-3 md:p-4 flex items-center gap-3 md:gap-4">
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground shrink-0">
+                      <Brain className="w-4 h-4 md:w-5 md:h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm font-bold leading-none truncate">AI Study Partner</p>
+                      <p className="text-[10px] md:text-xs text-muted-foreground mt-1 truncate">Chat for quick revision</p>
+                    </div>
+                    <div className="h-8 w-8 md:h-10 md:w-10 flex items-center justify-center rounded-full bg-background/50 text-muted-foreground group-hover:text-primary transition-colors">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
         </div>
@@ -408,4 +410,3 @@ export default function Exam() {
     </Layout>
   );
 }
-

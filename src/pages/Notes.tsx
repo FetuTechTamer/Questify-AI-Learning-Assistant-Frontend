@@ -191,7 +191,7 @@ function NotesList({ method, collectionId, refreshTrigger }: NotesListProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="shrink-0 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
                   onClick={() => handleDelete(id)}
                   disabled={deletingId === id}
                 >
@@ -305,16 +305,16 @@ export default function Notes() {
 
     return (
       <DashboardLayout title="Notes Hub">
-        <div className="container py-6 max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center gap-4 pb-4 border-b">
-            <Button variant="ghost" size="sm" onClick={() => setSelectedMethodId(null)}>
-              ← Back
+        <div className="container py-4 md:py-6 max-w-4xl mx-auto space-y-4 md:space-y-6">
+          <div className="flex items-center gap-3 md:gap-4 pb-4 border-b">
+            <Button variant="ghost" size="sm" onClick={() => setSelectedMethodId(null)} className="h-8 w-8 p-0 md:h-auto md:w-auto md:px-3 md:py-2">
+              ← <span className="hidden md:inline ml-1">Back</span>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight capitalize">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight capitalize truncate">
                 {selectedMethodId.replace("-", " ")} Notes
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-muted-foreground truncate">
                 {selectedCollection?.title}
               </p>
             </div>
@@ -327,7 +327,7 @@ export default function Notes() {
           />
 
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
+            <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">
               Saved Notes
             </h2>
             <NotesList
@@ -343,31 +343,31 @@ export default function Notes() {
 
   return (
     <DashboardLayout title="Notes Hub">
-      <div className="container py-6 max-w-7xl mx-auto space-y-6">
+      <div className="container py-4 md:py-6 max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Cognitive Studio</h1>
-            <p className="text-muted-foreground mt-1">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 pb-6 border-b">
+          <div className="text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Cognitive Studio</h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">
               Select your study collection and a structured note-taking method
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full">
-              <Books className="w-3.5 h-3.5" />
+          <div className="flex items-center justify-center gap-2 md:gap-3">
+            <Badge variant="outline" className="px-2 md:px-3 py-1 gap-1 md:gap-1.5 font-medium rounded-full text-[10px] md:text-xs">
+              <Books className="w-3 md:h-3.5" />
               {collections.length} Collections
             </Badge>
-            <Badge variant="outline" className="px-3 py-1 gap-1.5 font-medium rounded-full">
-              <Brain className="w-3.5 h-3.5" />
+            <Badge variant="outline" className="px-2 md:px-3 py-1 gap-1 md:gap-1.5 font-medium rounded-full text-[10px] md:text-xs">
+              <Brain className="w-3 md:h-3.5" />
               10 Methods
             </Badge>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
           {/* ── Left: Collection Selection ─────────────────────────── */}
           <div className="lg:col-span-4 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-2">
+            <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 px-2">
               <AlignLeft className="w-4 h-4" /> Select Collection
             </h2>
 
@@ -403,9 +403,9 @@ export default function Notes() {
                 </Button>
               </Card>
             ) : filteredCollections.length === 0 ? (
-              <p className="text-sm text-muted-foreground px-2">No collections match your search.</p>
+              <p className="text-sm text-muted-foreground px-2 text-center md:text-left">No collections match your search.</p>
             ) : (
-              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+              <div className="space-y-2 max-h-[300px] lg:max-h-[500px] overflow-y-auto pr-2">
                 {filteredCollections.map((collection) => (
                   <button
                     key={collection.collection_id}
@@ -426,23 +426,16 @@ export default function Notes() {
                             : "bg-muted-foreground/30"
                         )}
                       />
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-sm leading-tight truncate">
-                            {collection.title}
-                          </h3>
-                          <div className="flex items-center justify-between mt-0.5">
-                            {collection.description && (
-                              <p className="text-[10px] opacity-60 truncate">
-                                {collection.description}
-                              </p>
-                            )}
-                            {collection.created_at && (
-                              <p className="text-[9px] font-medium opacity-40 shrink-0">
-                                {new Date(collection.created_at).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-sm leading-tight truncate">
+                          {collection.title}
+                        </h3>
+                        {collection.description && (
+                          <p className="text-[10px] opacity-60 truncate mt-0.5">
+                            {collection.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -451,13 +444,13 @@ export default function Notes() {
           </div>
 
           {/* ── Right: Method Selection ───────────────────────────── */}
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-6 md:space-y-8">
             <div className="space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground px-2">
+              <h2 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground px-2">
                 Choose Structure
               </h2>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                 {noteMethods.map((method) => {
                   const visual = methodVisuals[method.id] || methodVisuals["outline"];
                   const IconComponent = visual.icon;
@@ -468,7 +461,7 @@ export default function Notes() {
                       key={method.id}
                       onClick={() => setSelectedMethodId(method.id)}
                       className={cn(
-                        "relative flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-300 group overflow-hidden border-2 text-center h-40",
+                        "relative flex flex-col items-center justify-center p-3 md:p-4 rounded-xl transition-all duration-300 group overflow-hidden border-2 text-center h-32 md:h-40",
                         selectedMethodId === method.id
                           ? "border-primary bg-primary/5 shadow-lg shadow-primary/10 scale-105"
                           : "border-transparent bg-muted/40 hover:bg-muted/60 opacity-80 hover:opacity-100"
@@ -476,26 +469,26 @@ export default function Notes() {
                     >
                       <div
                         className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110",
+                          "w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl flex items-center justify-center mb-2 md:mb-4 transition-transform group-hover:scale-110",
                           selectedMethodId === method.id
                             ? "bg-primary text-primary-foreground shadow-md"
                             : "bg-card text-muted-foreground"
                         )}
                       >
-                        <IconComponent className="w-6 h-6" />
+                        <IconComponent className="w-5 h-5 md:w-6 md:h-6" />
                       </div>
-                      <h4 className="font-bold text-base mb-1">{method.name}</h4>
-                      <p className="text-[10px] text-muted-foreground px-2 leading-tight">
+                      <h4 className="font-bold text-sm md:text-base mb-1 truncate w-full px-1">{method.name}</h4>
+                      <p className="text-[9px] md:text-[10px] text-muted-foreground px-1 leading-tight hidden sm:block">
                         {method.description.split(".")[0]}.
                       </p>
                       {isApiSupported && (
-                        <span className="absolute top-2 left-2 text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                        <span className="absolute top-1.5 md:top-2 left-1.5 md:left-2 text-[8px] md:text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary px-1 md:px-1.5 py-0.5 rounded-full">
                           Live
                         </span>
                       )}
                       {selectedMethodId === method.id && (
-                        <div className="absolute top-2 right-2 bg-primary text-primary-foreground p-1 rounded-full shadow-lg">
-                          <CheckCircle className="w-4 h-4" weight="fill" />
+                        <div className="absolute top-1.5 md:top-2 right-1.5 md:right-2 bg-primary text-primary-foreground p-1 rounded-full shadow-lg">
+                          <CheckCircle className="w-3 h-3 md:w-4 md:h-4" weight="fill" />
                         </div>
                       )}
                     </button>
@@ -506,18 +499,18 @@ export default function Notes() {
 
             {/* Summary Action Bar */}
             <div className="bg-card p-4 rounded-xl shadow-lg border flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="space-y-1 text-center md:text-left">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="space-y-1 text-center md:text-left min-w-0 w-full md:w-auto">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   Selected Configuration
                 </p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="font-bold truncate max-w-[160px]">
+                <div className="flex items-center justify-center md:justify-start gap-2 md:gap-3">
+                  <span className="font-bold truncate max-w-[120px] md:max-w-[200px] text-xs md:text-sm">
                     {selectedCollectionId
                       ? selectedCollection?.title
-                      : "Select a collection"}
+                      : "Select collection"}
                   </span>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="font-bold text-primary">
+                  <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                  <span className="font-bold text-primary text-xs md:text-sm truncate">
                     {selectedMethodId
                       ? noteMethods.find((m) => m.id === selectedMethodId)?.name
                       : "Choose method"}
@@ -529,7 +522,7 @@ export default function Notes() {
                 size="lg"
                 onClick={handleLaunch}
                 disabled={!selectedCollectionId || !selectedMethodId}
-                className="rounded-full px-10 h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                className="rounded-full px-8 md:px-10 h-10 md:h-12 font-bold shadow-lg shadow-primary/20 transition-transform active:scale-95 w-full md:w-auto text-xs md:text-sm"
               >
                 {selectedMethodId && API_METHODS.includes(selectedMethodId)
                   ? "Open Notes"
