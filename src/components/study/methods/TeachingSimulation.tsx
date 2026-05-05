@@ -17,7 +17,7 @@ interface Message {
     isThinking?: boolean;
 }
 
-export function TeachingSimulation({ onBack, chapterId, bookFilename }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string }) {
+export function TeachingSimulation({ onBack, chapterId, bookFilename, courseId, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',

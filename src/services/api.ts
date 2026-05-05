@@ -97,6 +97,62 @@ export const api = {
     return response.data.data || response.data;
   },
 
+  // Teaching Simulation
+  getTeachingData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/teaching/${collection_id}`);
+    return response.data.data || response.data;
+  },
+  submitTeachingExplanation: async (params: { collection_id: string; explanation: string }): Promise<any> => {
+    const response = await apiClient.post('/api/study/teaching', params);
+    return response.data.data || response.data;
+  },
+
+  // Spaced Repetition
+  getSpacedRepetitionData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/spaced-repetition/${collection_id}`);
+    return response.data.data || response.data;
+  },
+  updateSpacedRepetitionProgress: async (params: { collection_id: string; item_id: string; confidence: number }) => {
+    const response = await apiClient.post('/api/study/spaced-repetition', params);
+    return response.data;
+  },
+
+  // Standard Read
+  getStandardReadData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/standard-read/${collection_id}`);
+    return response.data.data || response.data;
+  },
+
+  // Blurting
+  getBlurtingData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/blurting/${collection_id}`);
+    return response.data.data || response.data;
+  },
+  submitBlurting: async (params: { collection_id: string; explanation: string }): Promise<any> => {
+    const response = await apiClient.post('/api/study/blurting', params);
+    return response.data.data || response.data;
+  },
+
+  // Interleaved Practice
+  getInterleavedData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/interleaved/${collection_id}`);
+    return response.data.data || response.data;
+  },
+  updateInterleavedProgress: async (params: { collection_id: string; item_id: string; confidence: number }) => {
+    const response = await apiClient.post('/api/study/interleaved', params);
+    return response.data;
+  },
+
+  // Reverse Learning
+  getReverseLearningData: async (collection_id: string): Promise<any> => {
+    const response = await apiClient.get(`/api/study/reverse-learning/${collection_id}`);
+    return response.data.data || response.data;
+  },
+  updateReverseLearningProgress: async (params: { collection_id: string; item_id: string; confidence: number }) => {
+    const response = await apiClient.post('/api/study/reverse-learning', params);
+    return response.data;
+  },
+
   // Notes
   getNotes: async (method: string, collection_id: string): Promise<any[]> => {
     const response = await apiClient.get(`/api/notes/${method}/${collection_id}`);

@@ -426,16 +426,23 @@ export default function Notes() {
                             : "bg-muted-foreground/30"
                         )}
                       />
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-sm leading-tight truncate">
-                          {collection.title}
-                        </h3>
-                        {collection.description && (
-                          <p className="text-[10px] opacity-60 truncate mt-0.5">
-                            {collection.description}
-                          </p>
-                        )}
-                      </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-sm leading-tight truncate">
+                            {collection.title}
+                          </h3>
+                          <div className="flex items-center justify-between mt-0.5">
+                            {collection.description && (
+                              <p className="text-[10px] opacity-60 truncate">
+                                {collection.description}
+                              </p>
+                            )}
+                            {collection.created_at && (
+                              <p className="text-[9px] font-medium opacity-40 shrink-0">
+                                {new Date(collection.created_at).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                     </div>
                   </button>
                 ))}

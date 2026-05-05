@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StudySessionLayout } from "@/components/study/StudySessionLayout";
 import { ArrowLeft, ArrowRight, Code, Key, List, CheckCircle } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,10 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 export function ReverseLearning({ onBack, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
-    const [step, setStep] = useState(0);
     const [revealedSteps, setRevealedSteps] = useState<number[]>([]);
 
     const PROBLEM = {
-        title: "How does React useFiber work?",
+        title: "How does React Fiber work?",
         solution_code: `
 function workLoop(deadline) {
   let shouldYield = false;
@@ -60,6 +59,30 @@ function workLoop(deadline) {
                             <pre className="text-cyan-100/90 whitespace-pre-wrap">
                                 {PROBLEM.solution_code}
                             </pre>
+                            <div className="absolute top-4 right-4 p-2 bg-slate-800 rounded-lg text-cyan-500">
+                                <Code className="w-5 h-5" />
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Right: The Breakdown (How we got there) */}
+                    <div className="w-full md:w-1/2 flex flex-col bg-background">
+                        <div className="p-6 border-b flex items-center justify-between">
+                            <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Identify Core Principles</h3>
+                            <div className="flex items-center gap-2">
+                                <Key className="w-4 h-4 text-cyan-500" />
+                                <span className="text-xs font-bold text-cyan-600">{revealedSteps.length} / {PROBLEM.principles.length}</span>
+                            </div>
+                        </div>
+
+                        <ScrollArea className="flex-1 p-6">
+                            <div className="space-y-4">
+                                {PROBLEM.principles.map((principle, idx) => (
+                                    <div key={idx} className="relative">
+                                        <button
+                                            onClick={() => toggleStep(idx)}
+                                            className={cn(
+                                                "w-full text-left p-6 rounded-2xl border-2 transition-all duration-300 flex gap-4 items-start",
                                                 revealedSteps.includes(idx)
                                                     ? "bg-background border-cyan-500 shadow-md"
                                                     : "bg-muted/50 border-transparent hover:bg-muted"

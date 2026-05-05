@@ -3,7 +3,8 @@ import { ChapterStructure } from "@/components/study/ChapterContent";
 
 interface GenerateChapterParams {
   courseName: string;
-  chapterTitle: string;
+  chapterTitle?: string;
+  collectionId?: string;
 }
 
 export function useChapter() {

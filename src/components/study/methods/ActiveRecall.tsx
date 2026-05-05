@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { StudySessionLayout } from "@/components/study/StudySessionLayout";
 import { Brain, Eye, EyeSlash, ArrowCounterClockwise, Check, Sparkle, X, Target, MagicWand, ArrowRight } from "@phosphor-icons/react";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,14 @@ export function ActiveRecall({ onBack, bookFilename, collectionId }: { onBack: (
                 const data = await api.getActiveRecallData(collectionId);
                 if (data && data.questions && data.questions.length > 0) {
                     setQuestions(data.questions);
+                }
+                if (data && data.progress) {
+                    if (typeof data.progress.currentIndex === 'number') {
+                        setCurrentIndex(data.progress.currentIndex);
+                    }
+                    if (data.progress.score) {
+                        setScore(data.progress.score);
+                    }
                 }
             } catch (err) {
                 console.error("Failed to load active recall questions", err);

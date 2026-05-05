@@ -62,6 +62,8 @@ export function FeynmanMethod({ chapterId, courseId, bookFilename, collectionId,
                         setLastCritique(data.feedback);
                         setShowFeedback(true);
                     }
+                    // If we have history, we might want to skip the "Ready?" message or mark as user turn
+                    setInteractionState('USER_ANSWERING');
                 }
             } catch (err) {
                 console.error(err);
