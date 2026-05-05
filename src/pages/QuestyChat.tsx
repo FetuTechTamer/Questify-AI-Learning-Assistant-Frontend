@@ -13,13 +13,12 @@ import {
   TrendUp,
   Trash,
   Clock,
-  User,
-  Robot,
   CircleNotch,
+  Robot,
+  List,
   ChatCircle,
   Paperclip,
-  Microphone,
-  List
+  Microphone
 } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { motion, AnimatePresence } from "framer-motion";
@@ -103,10 +102,9 @@ const QuestyChat = () => {
     setIsLoadingSessions(true);
     try {
       const data = await chatService.getSessions();
-      setSessions(data);
+      setSessions(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Failed to fetch chat sessions:", error);
-      toast.error("Failed to load chat history.");
+      setSessions([]);
     } finally {
       setIsLoadingSessions(false);
     }
@@ -116,10 +114,10 @@ const QuestyChat = () => {
     setIsLoadingMessages(true);
     try {
       const data = await chatService.getSessionMessages(sessionId);
-      setMessages(data);
+      setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Failed to fetch messages:", error);
-      toast.error("Failed to load messages.");
+      toast.error("Failed to load history.");
+      setMessages([]);
     } finally {
       setIsLoadingMessages(false);
     }
@@ -130,11 +128,7 @@ const QuestyChat = () => {
     setMessages([]);
     setInputValue('');
     setMobileHistoryOpen(false);
-    setTimeout(() => {
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, 100);
+    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   const deleteChat = async (sessionId: string, e: React.MouseEvent) => {
@@ -160,7 +154,6 @@ const QuestyChat = () => {
     const currentInput = inputValue;
     setInputValue('');
     
-    // Add optimistic user message
     const userMsg: ChatMessage = {
       role: 'user',
       content: currentInput,
@@ -184,14 +177,22 @@ const QuestyChat = () => {
       
       setMessages(prev => [...prev, aiMsg]);
       
-      // If this was a new session, update active session and refresh list
-      if (!activeSessionId) {
+      if (!activeSessionId && response.session_id) {
         setActiveSessionId(response.session_id);
         fetchSessions();
       }
-    } catch (error) {
-      console.error("Failed to get AI response:", error);
-      toast.error("AI is currently unavailable. Please try again.");
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        toast.error("Chat service not ready – please contact support");
+        const fallbackMsg: ChatMessage = {
+          role: 'assistant',
+          content: "I'm sorry, I'm currently in training mode and cannot access my full knowledge base right now. Please try again later or contact support if the issue persists.",
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, fallbackMsg]);
+      } else {
+        toast.error("Failed to get response.");
+      }
     } finally {
       setIsTyping(false);
     }
@@ -219,7 +220,8 @@ const QuestyChat = () => {
                 <span className="text-xs font-bold uppercase tracking-widest">Loading...</span>
               </div>
             ) : sessions.length === 0 ? (
-              <div className="p-6 text-center">
+              <div className="p-6 text-center space-y-2">
+                <ChatCircle className="w-8 h-8 mx-auto opacity-10" />
                 <p className="text-xs text-muted-foreground">No recent chats.</p>
               </div>
             ) : (
@@ -253,7 +255,7 @@ const QuestyChat = () => {
                   </div>
                   <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground opacity-60">
                     <Clock className="w-3 h-3" />
-                    {new Date(session.updated_at).toLocaleDateString()}
+                    {session.updated_at ? new Date(session.updated_at).toLocaleDateString() : 'Today'}
                   </div>
                 </div>
               ))
@@ -268,16 +270,15 @@ const QuestyChat = () => {
     <DashboardLayout title="Questy AI Partner">
       <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] gap-4 lg:gap-6 p-2 lg:p-4">
 
-        {/* --- DESKTOP SIDEBAR --- */}
+        {/* --- SIDEBAR --- */}
         {!isMobile && (
           <div className="w-80 flex-shrink-0 flex flex-col gap-4">
             <SidebarContent />
           </div>
         )}
 
-        {/* --- MAIN: CHAT INTERFACE --- */}
+        {/* --- CHAT INTERFACE --- */}
         <Card className="flex-1 flex flex-col rounded-xl border-none relative glass-card overflow-hidden">
-          {/* Mobile Header with History Toggle */}
           {isMobile && (
             <div className="flex items-center justify-between p-3 border-b bg-background/50 backdrop-blur-md">
               <Sheet open={mobileHistoryOpen} onOpenChange={setMobileHistoryOpen}>
@@ -299,7 +300,6 @@ const QuestyChat = () => {
 
           <AnimatePresence mode="wait">
             {messages.length === 0 && !activeSessionId ? (
-              /* --- Welcome Screen --- */
               <motion.div
                 key="welcome"
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -319,13 +319,10 @@ const QuestyChat = () => {
                   {suggestedPrompts.map((item, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                          setInputValue(item.prompt);
-                          inputRef.current?.focus();
-                      }}
+                      onClick={() => setInputValue(item.prompt)}
                       className="group flex gap-x-4 items-center p-3 lg:p-4 rounded-2xl border bg-card/50 text-left transition-all hover:border-primary hover:bg-primary/5 hover:shadow-sm"
                     >
-                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-3 shrink-0 transition-transform group-hover:scale-110", item.color)}>
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110", item.color)}>
                         <item.icon className="w-4.5 h-4.5" weight="bold" />
                       </div>
                       <div>
@@ -339,7 +336,6 @@ const QuestyChat = () => {
                 </div>
               </motion.div>
             ) : (
-              /* --- Message Stream --- */
               <ScrollArea className="flex-1 p-4 lg:p-10">
                 <div className="space-y-6 max-w-3xl mx-auto">
                   {isLoadingMessages && messages.length === 0 ? (
@@ -376,7 +372,7 @@ const QuestyChat = () => {
                               "text-[9px] lg:text-[10px] opacity-40 mt-2 lg:mt-3 block font-bold uppercase tracking-widest",
                               message.role === 'user' ? "text-primary-foreground" : "text-muted-foreground"
                             )}>
-                              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                             </span>
                           </div>
 
@@ -396,10 +392,13 @@ const QuestyChat = () => {
                           <div className="w-9 h-9 rounded-xl bg-primary/10 flex flex-shrink-0 items-center justify-center shadow-sm self-end mb-2">
                             <Robot className="w-5 h-5 text-primary animate-pulse" />
                           </div>
-                          <div className="bg-muted px-6 py-4 rounded-3xl flex gap-1.5 items-center">
-                            <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-                            <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
+                          <div className="bg-muted px-6 py-4 rounded-3xl flex flex-col gap-1.5">
+                            <div className="flex gap-1.5 items-center">
+                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
+                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
+                            </div>
+                            <span className="text-[10px] font-bold text-primary opacity-60">Questy is thinking...</span>
                           </div>
                         </div>
                       )}

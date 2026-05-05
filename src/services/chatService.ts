@@ -20,22 +20,89 @@ export interface AskResponse {
 }
 
 export const chatService = {
+    /**
+     * Fetches all chat sessions for the user.
+     */
     getSessions: async (): Promise<ChatSession[]> => {
-        const response = await apiClient.get('/api/chat/sessions');
-        return response.data.data || response.data || [];
+        const url = '/api/chat/sessions';
+        console.log(`[Chat API GET] ${url}`);
+        
+        try {
+            const response = await apiClient.get(url);
+            console.log(`[Chat API SUCCESS] GET ${url}`, response.data);
+            // Support both {data: [...]} and direct array responses
+            return response.data.data || (Array.isArray(response.data) ? response.data : []);
+        } catch (error: any) {
+            console.error(`[Chat API ERROR] GET ${url}`, {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+            throw error;
+        }
     },
 
+    /**
+     * Fetches messages for a specific session.
+     */
     getSessionMessages: async (sessionId: string): Promise<ChatMessage[]> => {
-        const response = await apiClient.get(`/api/chat/sessions/${sessionId}/messages`);
-        return response.data.data || response.data || [];
+        const url = `/api/chat/sessions/${sessionId}/messages`;
+        console.log(`[Chat API GET] ${url}`);
+        
+        try {
+            const response = await apiClient.get(url);
+            console.log(`[Chat API SUCCESS] GET ${url}`, response.data);
+            return response.data.data || (Array.isArray(response.data) ? response.data : []);
+        } catch (error: any) {
+            console.error(`[Chat API ERROR] GET ${url}`, {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+            throw error;
+        }
     },
 
+    /**
+     * Sends a message to Questy AI.
+     */
     ask: async (params: { message: string; session_id?: string; collection_id?: string }): Promise<AskResponse> => {
-        const response = await apiClient.post('/api/chat/ask', params);
-        return response.data.data || response.data;
+        const url = '/api/chat/ask';
+        console.group(`[Chat API POST] ${url}`);
+        console.log("Payload:", params);
+        console.groupEnd();
+        
+        try {
+            const response = await apiClient.post(url, params);
+            console.log(`[Chat API SUCCESS] POST ${url}`, response.data);
+            return response.data.data || response.data;
+        } catch (error: any) {
+            console.error(`[Chat API ERROR] POST ${url}`, {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+            throw error;
+        }
     },
 
+    /**
+     * Deletes a chat session.
+     */
     deleteSession: async (sessionId: string): Promise<void> => {
-        await apiClient.delete(`/api/chat/sessions/${sessionId}`);
+        const url = `/api/chat/sessions/${sessionId}`;
+        console.log(`[Chat API DELETE] ${url}`);
+        
+        try {
+            await apiClient.delete(url);
+            console.log(`[Chat API SUCCESS] DELETE ${url}`);
+        } catch (error: any) {
+            console.error(`[Chat API ERROR] DELETE ${url}`, {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+            throw error;
+        }
     }
 };
