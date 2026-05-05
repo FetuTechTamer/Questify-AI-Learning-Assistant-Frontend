@@ -110,7 +110,8 @@ export default function Settings() {
     setIsDeleting(true);
     try {
       console.log('[handleDeleteAccount] Initiating account deletion...');
-      await authService.deleteAccount();
+      const response = await authService.deleteAccount();
+      console.log('[handleDeleteAccount] Success response:', response);
       
       // Clear all local data as requested
       localStorage.clear();
@@ -118,19 +119,17 @@ export default function Settings() {
       // Update auth state
       await logout();
       
-      toast.success("Account permanently deleted. We're sorry to see you go.");
+      toast.success("Account deleted successfully");
       navigate("/auth");
     } catch (error: any) {
-      console.error("[handleDeleteAccount] Catch Block Diagnostic:");
-      console.error("- Error Object:", error);
+      console.error("[handleDeleteAccount] Full error details:", error);
       
-      if (!error.response || error.response.status === 500) {
-        // CORS (no response) or Server Error (500)
-        console.error("- Diagnosis: Backend endpoint is likely not ready or misconfigured (CORS/500).");
-        toast.error("The backend account deletion endpoint is not ready yet. Please contact support.");
+      if (!error.response) {
+        // Network or CORS error (no response received)
+        toast.error("Deletion failed – network or CORS issue. Please try again later.");
       } else {
+        // Backend responded with an error (4xx, 5xx)
         const errorMessage = error.response?.data?.message || "Failed to delete account. Please try again later.";
-        console.error("- Diagnosis: Backend responded with error:", errorMessage);
         toast.error(errorMessage);
       }
     } finally {

@@ -66,35 +66,13 @@ export const authService = {
   },
 
   deleteAccount: async () => {
-    const token = localStorage.getItem('access_token');
-    console.log('--- Account Deletion Request Diagnostic ---');
-    console.log('Method: DELETE');
-    console.log('Endpoint: /api/auth/user');
-    console.log('Token Present:', !!token);
-    if (token) {
-      console.log('Authorization Header: Bearer ' + token.substring(0, 10) + '...');
-    }
-    
     try {
+      console.log('[authService] Requesting account deletion: DELETE /api/auth/user');
       const response = await apiClient.delete('/api/auth/user');
-      console.log('Response Status:', response.status);
-      console.log('Response Body:', JSON.stringify(response.data));
-      console.log('--- Account Deletion Success ---');
-      return response.data.data || response.data;
+      console.log('[authService] Account deletion response:', response);
+      return response.data;
     } catch (error: any) {
-      console.error('--- Account Deletion Error ---');
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', JSON.stringify(error.response.data));
-        console.error('Headers:', JSON.stringify(error.response.headers));
-      } else if (error.request) {
-        console.error('Request sent but no response received (CORS or Server Down)');
-        console.error('Request details:', error.request);
-      } else {
-        console.error('Error setting up request:', error.message);
-      }
-      console.error('Full Error Object:', error);
-      console.error('------------------------------');
+      console.error('[authService] Account deletion error:', error);
       throw error;
     }
   },
