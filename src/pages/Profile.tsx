@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Envelope,
   PencilSimple,
@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { collectionsService, Collection } from "@/services/collectionsService";
+import { authService } from "@/services/authService";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -34,11 +35,49 @@ import {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // Avatar Management State
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(avatarUrl), [avatarUrl]);
+
+  const fetchAvatar = async () => {
+    setIsAvatarLoading(true);
+    try {
+      // Per user request, we now prioritize the user object's avatar_url
+      // but we still attempt a debug fetch of the avatar endpoint to log potential errors
+      console.log("[Profile] Checking avatar via profile object:", user?.avatar_url);
+      
+      if (user?.avatar_url) {
+        const bustUrl = user.avatar_url.includes('?') 
+          ? `${user.avatar_url}&t=${new Date().getTime()}`
+          : `${user.avatar_url}?t=${new Date().getTime()}`;
+        setAvatarUrl(bustUrl);
+      } else {
+        // Fallback: try to fetch from the dedicated endpoint for debugging
+        const data = await authService.getAvatar();
+        if (data && data.avatar_url) {
+          setAvatarUrl(data.avatar_url);
+        }
+      }
+    } catch (error: any) {
+      console.error("[Profile] Debug fetch failed, sticking with profile avatar.");
+      // If the error was a non-JSON response, toast it as requested
+      if (error.message && error.message.includes('Invalid response type')) {
+        toast.error(`Avatar API Error: ${error.message}`);
+      }
+    } finally {
+      setIsAvatarLoading(false);
+    }
+  };
 
   const fetchCollections = async () => {
     setIsLoading(true);
@@ -54,6 +93,12 @@ export default function Profile() {
   };
 
   useEffect(() => {
+    fetchAvatar();
+    fetchCollections();
+  }, []);
+
+  useEffect(() => {
+    fetchAvatar();
     fetchCollections();
   }, []);
 
@@ -82,13 +127,23 @@ export default function Profile() {
           </div>
 
           <div className="px-4 md:px-8 flex flex-col md:flex-row items-center md:items-end gap-4 md:gap-8 -mt-12 md:-mt-16 relative z-10 text-center md:text-left">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl bg-background border-4 border-background shadow-2xl flex items-center justify-center overflow-hidden">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl md:rounded-3xl bg-background border-4 border-background shadow-2xl flex items-center justify-center overflow-hidden relative group">
               <Avatar className="w-full h-full rounded-none">
-                <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                <AvatarImage src={memoizedAvatarUrl} alt={user?.full_name} className="object-cover" />
                 <AvatarFallback className="bg-primary/10 text-3xl md:text-4xl font-black text-primary">
                   {user?.full_name?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
+              
+              {isAvatarUploading && (
+                <div className="absolute inset-0 bg-background/60 flex items-center justify-center z-20 backdrop-blur-sm">
+                  <CircleNotch className="w-8 h-8 text-primary animate-spin" />
+                </div>
+              )}
+              
+              {isAvatarLoading && !isAvatarUploading && (
+                <div className="absolute inset-0 bg-muted/20 animate-pulse z-10" />
+              )}
             </div>
 
             <div className="flex-1 pb-2">

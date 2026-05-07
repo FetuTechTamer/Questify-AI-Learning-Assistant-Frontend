@@ -35,6 +35,38 @@ export const authService = {
     return response.data.data;
   },
 
+  getAvatar: async () => {
+    try {
+      console.log('[authService] Attempting to fetch avatar: GET /api/auth/user/avatar');
+      const response = await apiClient.get('/api/auth/user/avatar', {
+        // We use 'text' transform to safely inspect the response before JSON parsing
+        transformResponse: [(data) => data] 
+      });
+
+      const contentType = response.headers['content-type'] || '';
+      console.log('[authService] Response Status:', response.status);
+      console.log('[authService] Content-Type:', contentType);
+
+      if (!contentType.includes('application/json')) {
+        console.warn('[authService] Response is NOT JSON. Raw data preview:', typeof response.data === 'string' ? response.data.substring(0, 100) : 'Binary data');
+        throw new Error(`Invalid response type: ${contentType} (Status: ${response.status})`);
+      }
+
+      // If it is JSON, parse it
+      try {
+        const jsonData = JSON.parse(response.data);
+        console.log('[authService] Parsed JSON data:', jsonData);
+        return jsonData.data;
+      } catch (e) {
+        console.error('[authService] Failed to parse JSON:', response.data);
+        throw new Error(`Failed to parse JSON response (Status: ${response.status})`);
+      }
+    } catch (error: any) {
+      console.error('[authService] GET /api/auth/user/avatar failed:', error);
+      throw error;
+    }
+  },
+
   updateAvatar: async (file: File) => {
     console.log('--- Upload Avatar Request ---');
     console.log('File:', file.name, file.type, file.size);
@@ -43,26 +75,21 @@ export const authService = {
     try {
       const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
       console.log('Upload success:', response.data);
-      if (response.data?.data?.avatar_url) {
-        console.log('Backend avatar_url after upload:', response.data.data.avatar_url);
-      }
       return response.data.data;
     } catch (error: any) {
       console.error('Avatar upload error:', error);
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        if (error.response.data?.detail) {
-          console.error('Validation details:', JSON.stringify(error.response.data.detail, null, 2));
-        }
-      }
       throw error;
     }
   },
 
   deleteAvatar: async () => {
-    const response = await apiClient.delete('/api/auth/user/profile/avatar');
-    return response.data.data;
+    try {
+      const response = await apiClient.delete('/api/auth/user/profile/avatar');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Avatar deletion error:', error);
+      throw error;
+    }
   },
 
   deleteAccount: async () => {

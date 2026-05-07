@@ -8,7 +8,6 @@ export function cn(...inputs: ClassValue[]) {
 export function getAvatarUrl(path: string | null | undefined): string {
   if (!path) return "";
   if (path.startsWith("http")) {
-    console.log('getAvatarUrl: path is already absolute:', path);
     return path;
   }
   
@@ -16,7 +15,5 @@ export function getAvatarUrl(path: string | null | undefined): string {
   const cleanBase = baseUrl.replace(/\/$/, "");
   const cleanPath = path.replace(/^\//, "");
   
-  const finalUrl = `${cleanBase}/${cleanPath}`;
-  console.log(`getAvatarUrl: resolving relative path [${path}] to [${finalUrl}]`);
-  return finalUrl;
+  return `${cleanBase}/${cleanPath}`;
 }

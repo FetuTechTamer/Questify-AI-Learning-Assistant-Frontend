@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import {
   User,
   Question,
@@ -53,6 +53,8 @@ export default function Settings() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
+  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
+  
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -88,28 +90,34 @@ export default function Settings() {
 
     setIsUploading(true);
     try {
+      console.log("[Settings] Uploading avatar: PUT /api/auth/user/profile/avatar");
       await authService.updateAvatar(file);
       toast.success("Avatar updated successfully!");
-      await refreshProfile();
+      if (refreshProfile) await refreshProfile();
     } catch (error: any) {
+      console.error("[Settings] Avatar upload error:", error);
       toast.error(error.response?.data?.message || "Failed to upload avatar");
     } finally {
       setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
   const handleDeleteAvatar = async () => {
     setIsUploading(true);
     try {
+      console.log("[Settings] Removing avatar: DELETE /api/auth/user/profile/avatar");
       await authService.deleteAvatar();
       toast.success("Avatar removed");
-      await refreshProfile();
+      if (refreshProfile) await refreshProfile();
     } catch (error: any) {
+      console.error("[Settings] Avatar removal error:", error);
       toast.error(error.response?.data?.message || "Failed to remove avatar");
     } finally {
       setIsUploading(false);
     }
   };
+
   
   const handleUpdatePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPassword) {
@@ -217,13 +225,13 @@ export default function Settings() {
                   <div className="flex flex-col sm:flex-row items-center gap-6">
                     <div className="relative group">
                       <Avatar className="w-24 h-24 border-4 border-background shadow-xl">
-                        <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                        <AvatarImage src={memoizedAvatarUrl} alt={user?.full_name} />
                         <AvatarFallback className="gradient-primary text-2xl font-bold text-primary-foreground">
                           {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                         </AvatarFallback>
                       </Avatar>
                       {isUploading && (
-                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center z-10">
                           <CircleNotch className="w-8 h-8 text-white animate-spin" />
                         </div>
                       )}

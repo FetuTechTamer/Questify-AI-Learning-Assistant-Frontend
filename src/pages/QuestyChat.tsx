@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,11 +62,13 @@ const QuestyChat = () => {
   const { user } = useAuth();
   const { collectionId } = useMaterial();
   const isMobile = useIsMobile();
-  
+
+  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
+
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  
+
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
@@ -153,7 +155,7 @@ const QuestyChat = () => {
 
     const currentInput = inputValue;
     setInputValue('');
-    
+
     const userMsg: ChatMessage = {
       role: 'user',
       content: currentInput,
@@ -174,9 +176,9 @@ const QuestyChat = () => {
         content: response.response,
         timestamp: new Date().toISOString()
       };
-      
+
       setMessages(prev => [...prev, aiMsg]);
-      
+
       if (!activeSessionId && response.session_id) {
         setActiveSessionId(response.session_id);
         fetchSessions();
@@ -229,8 +231,8 @@ const QuestyChat = () => {
                 <div
                   key={session.session_id}
                   onClick={() => {
-                      setActiveSessionId(session.session_id);
-                      setMobileHistoryOpen(false);
+                    setActiveSessionId(session.session_id);
+                    setMobileHistoryOpen(false);
                   }}
                   className={cn(
                     "group p-2.5 rounded-xl cursor-pointer transition-all duration-200 relative",
@@ -378,7 +380,7 @@ const QuestyChat = () => {
 
                           {message.role === 'user' && (
                             <Avatar className="w-8 h-8 lg:w-9 lg:h-9 rounded-xl shadow-sm self-end mb-2">
-                              <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                              <AvatarImage src={memoizedAvatarUrl} alt={user?.full_name} />
                               <AvatarFallback className="bg-muted text-muted-foreground text-xs font-bold">
                                 {user?.full_name?.charAt(0) || "U"}
                               </AvatarFallback>
@@ -394,9 +396,9 @@ const QuestyChat = () => {
                           </div>
                           <div className="bg-muted px-6 py-4 rounded-3xl flex flex-col gap-1.5">
                             <div className="flex gap-1.5 items-center">
-                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
-                                <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
+                              <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '200ms' }} />
+                              <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" style={{ animationDelay: '400ms' }} />
                             </div>
                             <span className="text-[10px] font-bold text-primary opacity-60">Questy is thinking...</span>
                           </div>
@@ -419,10 +421,10 @@ const QuestyChat = () => {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend();
-                      }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
                   }}
                   placeholder="Ask anything..."
                   className="border-none focus-visible:ring-0 min-h-[40px] lg:min-h-[48px] max-h-[150px] lg:max-h-[200px] px-4 lg:px-5 py-2 lg:py-3 text-sm bg-transparent resize-none"

@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { AIAssistantButton } from "../ai/AIAssistantButton";
@@ -32,6 +32,8 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
 
   // Don't show sidebar on landing page or auth pages
   const isPublicPage = location.pathname === "/" || location.pathname === "/auth";
@@ -109,7 +111,7 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
                 className="flex items-center gap-2 hover:bg-muted/50 p-1 rounded-full transition-colors"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                  <AvatarImage src={memoizedAvatarUrl} alt={user?.full_name} />
                   <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
                     {user?.full_name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                   </AvatarFallback>
