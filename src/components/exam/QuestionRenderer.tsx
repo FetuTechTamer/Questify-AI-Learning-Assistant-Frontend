@@ -1,64 +1,75 @@
 import React from 'react';
-import { Question } from '@/data/mockData';
 import { MCQRenderer } from './MCQRenderer';
 import { TFRenderer } from './TFRenderer';
 import { MatchingRenderer } from './MatchingRenderer';
 import { FillBlankRenderer } from './FillBlankRenderer';
 import { CodeRenderer } from './CodeRenderer';
+import { ShortAnswerRenderer } from './ShortAnswerRenderer';
+import { ExamQuestion } from '@/services/api';
 
 interface QuestionRendererProps {
-    question: Question;
+    question: ExamQuestion;
     value?: any;
     onChange: (answer: any) => void;
     disabled?: boolean;
 }
 
 export function QuestionRenderer({ question, value, onChange, disabled }: QuestionRendererProps) {
-    switch (question.type) {
-        case 'mcq':
+    switch (question.question_type) {
+        case 'Multiple Choice':
             return (
                 <MCQRenderer
-                    question={question}
+                    question={question as any}
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
                 />
             );
 
-        case 'true-false':
+        case 'True/False':
             return (
                 <TFRenderer
-                    question={question}
+                    question={question as any}
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
                 />
             );
 
-        case 'matching':
+        case 'Matching':
             return (
                 <MatchingRenderer
-                    question={question}
+                    question={question as any}
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
                 />
             );
 
-        case 'fill-blank':
+        case 'Fill in Blank':
             return (
                 <FillBlankRenderer
-                    question={question}
+                    question={question as any}
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
                 />
             );
 
-        case 'coding':
+        case 'Coding':
             return (
                 <CodeRenderer
-                    question={question}
+                    question={question as any}
+                    value={value}
+                    onChange={onChange}
+                    disabled={disabled}
+                />
+            );
+
+        case 'Short Answer':
+            return (
+                <ShortAnswerRenderer
+                    question={question as any}
                     value={value}
                     onChange={onChange}
                     disabled={disabled}
@@ -68,8 +79,9 @@ export function QuestionRenderer({ question, value, onChange, disabled }: Questi
         default:
             return (
                 <div className="p-4 rounded-xl border border-dashed border-muted text-muted-foreground text-center">
-                    Unsupported question type: {question.type}
+                    Unsupported question type: {question.question_type}
                 </div>
             );
     }
 }
+

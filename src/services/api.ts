@@ -10,15 +10,23 @@ export interface Collection {
 }
 
 export interface ExamQuestion {
-  id: string;
-  type: 'mcq' | 'true-false' | 'fill-blank' | 'matching' | 'coding' | 'short-answer';
-  difficulty: 'easy' | 'medium' | 'hard';
+  question_id: string;
   question: string;
-  options?: string[];
-  segments?: any[];
-  matchingPairs?: any[];
-  starterCode?: string;
-  language?: string;
+  question_type: "Multiple Choice" | "True/False" | "Fill in Blank" | "Matching" | "Coding" | "Short Answer";
+  content: {
+    options?: string[];
+    answer?: boolean;
+    sentence?: string;
+    correct_word?: string;
+    left_side?: string[];
+    right_side?: string[];
+    pairs?: Record<string, string>;
+    problem_statement?: string;
+    initial_code?: string;
+    solution_code?: string;
+    model_answer?: string;
+  };
+  difficulty?: string;
 }
 
 export interface ExamData {
@@ -26,9 +34,20 @@ export interface ExamData {
   questions: ExamQuestion[];
 }
 
+
 export interface SubmitResponse {
-  score: number;
-  feedback: string;
+  score?: number; // fallback
+  total_score?: number;
+  max_score?: number;
+  status?: string;
+  feedback?: string;
+  graded_items?: Array<{
+    question_id: string;
+    score: number;
+    max_score: number;
+    feedback: string;
+    correct?: boolean;
+  }>;
   details?: any;
 }
 
@@ -54,7 +73,21 @@ export const api = {
 
     try {
       const response = await apiClient.post(url, params);
-      return response.data.data || response.data;
+      const data = response.data.data || response.data;
+      
+      // Handle cases where questions might be in an 'items' field or similar
+      let questions = data.questions || data.items || [];
+      
+      // Normalize questions: handle different field names for question text
+      questions = questions.map((q: any) => ({
+        ...q,
+        question: q.question || q.text || q.question_text || "Question text not provided"
+      }));
+
+      return {
+        ...data,
+        questions
+      };
     } catch (error: any) {
       console.error('--- EXAM GENERATION FAILED ---');
       

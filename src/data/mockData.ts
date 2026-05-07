@@ -25,7 +25,7 @@ export interface Question {
   type: 'mcq' | 'true-false' | 'fill-blank' | 'matching' | 'coding' | 'short-answer';
   difficulty: 'easy' | 'medium' | 'hard';
   question: string;
-  options?: string[]; 
+  options?: string[];
   correctAnswer: string | string[];
   explanation: string;
   timeEstimate: number;
@@ -393,6 +393,12 @@ export const noteMethods: NoteMethod[] = [
 ];
 
 export interface Achievement { id: string; name: string; description: string; icon: string; unlockedAt?: string; progress?: number; }
+export interface StudentProfile { id: string; name: string; email: string; avatar: string; academicYear: string; enrolledCourses: string[]; joinDate: string; totalStudyHours: number; examsCompleted: number; averageScore: number; currentStreak: number; longestStreak: number; learningStyle: string; peakPerformanceTime: string; achievements: Achievement[]; }
+
+export const studentProfile: StudentProfile = {
+  id: 'student1', name: 'Abate Alemu', email: 'abatealemu@aau.edu', avatar: '', academicYear: '4th Year', enrolledCourses: ['is-db-201', 'is-prog-101'], joinDate: '2023-09-01', totalStudyHours: 156, examsCompleted: 47, averageScore: 78, currentStreak: 12, longestStreak: 28, learningStyle: 'Visual', peakPerformanceTime: '7PM-9PM',
+  achievements: [{ id: 'a1', name: 'First steps', description: 'Done', icon: '🎯', unlockedAt: '2023-09-02' }],
+};
 
 export interface StudyBlock { id: string; day: string; startTime: string; endTime: string; courseId: string; courseName: string; topic: string; type: 'exam' | 'review' | 'notes' | 'flashcards'; priority: 'low' | 'medium' | 'high'; completed: boolean; }
 export const weeklyPlan: StudyBlock[] = [

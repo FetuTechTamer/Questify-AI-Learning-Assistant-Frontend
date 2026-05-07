@@ -36,40 +36,64 @@ interface ExamRoomProps {
 
 // Navigator Component
 const QuestionNavigator = ({ questions, answers, onScroll }: { questions: any[], answers: Record<string, any>, onScroll: (id: string) => void }) => (
-    <Card className="rounded-xl border shadow-sm h-full flex flex-col overflow-hidden">
-        <CardHeader className="pb-3 border-b px-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <List className="w-4 h-4" />
-                Question Navigator
+    <Card className="rounded-3xl border-none shadow-2xl bg-card/60 backdrop-blur-xl h-full flex flex-col overflow-hidden glass-card">
+        <CardHeader className="pb-4 border-b border-border/50 px-6 pt-6 bg-primary/5">
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-3">
+                <SquaresFour className="w-4 h-4 text-primary" weight="fill" />
+                Navigation Console
             </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4 px-4 overflow-y-auto">
-            <div className="grid grid-cols-5 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <CardContent className="pt-6 px-6 overflow-y-auto custom-scrollbar flex-1">
+            <div className="grid grid-cols-5 gap-2.5">
                 {questions.map((q, i) => (
                     <button
-                        key={q.id}
-                        onClick={() => onScroll(q.id)}
+                        key={q.question_id}
+                        onClick={() => onScroll(q.question_id)}
                         className={cn(
-                            "aspect-square rounded-lg text-xs font-bold transition-all flex items-center justify-center border",
-                            answers[q.id]
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-transparent hover:border-muted-foreground/20"
+                            "aspect-square rounded-xl text-[10px] font-black transition-all flex items-center justify-center border relative overflow-hidden group",
+                            answers[q.question_id]
+                                ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105 active:scale-95"
+                                : "bg-muted/50 text-muted-foreground border-transparent hover:border-primary/30 hover:bg-muted/80 active:scale-95"
                         )}
                     >
-                        {i + 1}
+                        <span className="relative z-10">{i + 1}</span>
+                        {answers[q.question_id] && (
+                            <div className="absolute top-0.5 right-0.5">
+                                <div className="w-1 h-1 rounded-full bg-primary-foreground/50" />
+                            </div>
+                        )}
+                        {!answers[q.question_id] && (
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
                     </button>
                 ))}
             </div>
 
-            <div className="mt-6 space-y-2">
-                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    Answered
+            <div className="mt-8 space-y-4 pt-6 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" />
+                        Complete
+                    </div>
+                    <span className="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                        {Object.keys(answers).length}
+                    </span>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                    <div className="w-2 h-2 rounded-full bg-muted" />
-                    Remaining
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                        <div className="w-1.5 h-1.5 rounded-full bg-muted" />
+                        Pending
+                    </div>
+                    <span className="text-[10px] font-black text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
+                        {questions.length - Object.keys(answers).length}
+                    </span>
                 </div>
+            </div>
+            
+            <div className="mt-8 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+                <p className="text-[9px] font-bold text-muted-foreground leading-relaxed italic">
+                    Tip: Questions can be answered in any order. Trust your intuition.
+                </p>
             </div>
         </CardContent>
     </Card>
@@ -127,27 +151,30 @@ const ExamContent = React.memo(({
             <main className="lg:col-span-9 space-y-6 md:space-y-8 pb-32 lg:pb-0">
                 {questions.map((question, index) => (
                     <div
-                        key={question.id}
-                        ref={el => questionRefs.current[question.id] = el}
+                        key={question.question_id}
+                        ref={el => questionRefs.current[question.question_id] = el}
                         className="scroll-mt-32"
                     >
                         <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3 px-1">
                             <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Question {index + 1}</span>
-                            <Badge variant="outline" className="rounded-full text-[9px] md:text-[10px] uppercase font-bold">{question.type}</Badge>
-                            <Badge variant="secondary" className="rounded-full text-[9px] md:text-[10px] uppercase font-bold">{question.difficulty}</Badge>
+                            <Badge variant="outline" className="rounded-full text-[9px] md:text-[10px] uppercase font-bold">{question.question_type}</Badge>
+                            {question.difficulty && (
+                                <Badge variant="secondary" className="rounded-full text-[9px] md:text-[10px] uppercase font-bold">{question.difficulty}</Badge>
+                            )}
                         </div>
 
                         <Card className="rounded-xl md:rounded-2xl border shadow-sm transition-all duration-300 hover:shadow-md">
                             <CardContent className="p-5 md:p-8">
                                 <QuestionRenderer
                                     question={question}
-                                    value={answers[question.id]}
-                                    onChange={(val) => onAnswer(question.id, val)}
+                                    value={answers[question.question_id]}
+                                    onChange={(val) => onAnswer(question.question_id, val)}
                                 />
                             </CardContent>
                         </Card>
                     </div>
                 ))}
+
 
                 <div className="pt-12 pb-24 text-center border-t px-4">
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">

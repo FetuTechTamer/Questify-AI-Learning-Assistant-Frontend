@@ -15,7 +15,9 @@ import {
   Lightning,
   GraduationCap,
   ArrowRight,
-  CircleNotch
+  CircleNotch,
+  ClockCounterClockwise,
+  Warning
 } from "@phosphor-icons/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,10 +56,11 @@ export default function Exam() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const [config, setConfig] = useState({
-    questionTypes: ['mcq', 'true-false', 'fill-blank', 'matching', 'coding'],
+    questionTypes: ['mcq'], // Multiple Choice as default
     questionCount: 10,
     difficulty: 'medium' as 'easy' | 'medium' | 'hard' | 'mixed',
   });
+
 
   // Fetch collections on mount
   useEffect(() => {
@@ -65,23 +68,14 @@ export default function Exam() {
       try {
         const data = await collectionsService.getCollections();
         setCollections(data);
+        
+        // Auto-select session collection if it exists
+        if (sessionCollectionId && data.some(c => c.collection_id === sessionCollectionId)) {
+          setActiveCollectionId(sessionCollectionId);
+        }
       } catch (error: any) {
         console.error("--- Collection Fetch Error (Exam Page) ---");
-        console.error("URL: /api/collections/");
-        
-        // Fallback to session collection if available
-        if (sessionCollectionId) {
-          const fallbackCollection: Collection = {
-            collection_id: sessionCollectionId,
-            title: "Current Session Collection",
-            description: "Materials you just uploaded and processed",
-            created_at: new Date().toISOString()
-          };
-          setCollections([fallbackCollection]);
-          toast.info("Using collection from your current session.");
-        } else {
-          toast.error("Failed to load your study collections. Please try again.");
-        }
+        toast.error("Failed to load your study collections. Please check your connection.");
       } finally {
         setIsLoadingCollections(false);
       }
@@ -95,7 +89,6 @@ export default function Exam() {
       const fetchChapters = async () => {
         setIsLoadingChapters(true);
         try {
-          // Using analyze endpoint to get chapters for now as per materialService capabilities
           const data = await materialService.analyze(activeCollectionId);
           setChapters(data.chapters || []);
         } catch (error) {
@@ -135,11 +128,20 @@ export default function Exam() {
   const selectedCollection = collections.find((c) => c.collection_id === activeCollectionId);
 
   const handleStart = async () => {
-    if (!activeCollectionId) return;
+    if (!activeCollectionId) {
+      toast.error("Please select a study collection first.");
+      return;
+    }
+
+    if (config.questionTypes.length === 0) {
+      toast.error("Please select at least one question type.");
+      return;
+    }
     
     setIsGenerating(true);
+    console.log("--- EXAM GENERATION START ---");
     try {
-      // Map question type IDs to labels for the backend
+      // Map question type IDs to labels for the backend strictly as requested
       const selectedTypeLabels = config.questionTypes.map(typeId => {
         const type = questionTypes.find(t => t.id === typeId);
         return type ? type.label : typeId;
@@ -153,14 +155,24 @@ export default function Exam() {
       // Get all chapter IDs from the fetched chapters
       const chapterIds = chapters.map(ch => ch.chapter_id);
 
-      const examData = await api.generateExam({
+      const requestPayload = {
         collection_id: activeCollectionId,
         chapter_ids: chapterIds,
         question_count: config.questionCount,
         difficulty: formattedDifficulty,
         question_types: selectedTypeLabels
-      });
+      };
+
+      console.log("Request Payload:", requestPayload);
+
+      const examData = await api.generateExam(requestPayload);
       
+      console.log("Response Data:", examData);
+
+      if (!examData || !examData.questions || examData.questions.length === 0) {
+        throw new Error("No questions were generated. Try adjusting your settings.");
+      }
+
       setExamId(examData.exam_id);
       setQuestions(examData.questions);
       setAnswers({});
@@ -168,16 +180,15 @@ export default function Exam() {
       setIsFinished(false);
       setResults(null);
       setStep("exam");
-      toast.success("Exam generated successfully!");
+      toast.success("Assessment generated successfully!");
     } catch (error: any) {
-      console.error("Failed to generate exam:", error);
-      
-      if (error.code === 'ERR_NETWORK' || !error.response) {
-        toast.error("Network error – cannot reach exam service");
-      } else {
-        const backendMessage = error.response?.data?.detail || error.response?.data?.message || error.response?.data?.error || "Failed to generate exam. AI might be busy, try again.";
-        toast.error(backendMessage);
-      }
+      console.error("--- EXAM GENERATION FAILED ---");
+      console.error(error);
+      const backendMessage = error.response?.data?.detail || 
+                            error.response?.data?.message || 
+                            error.message ||
+                            "Failed to generate assessment. Please try again.";
+      toast.error(backendMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -191,269 +202,369 @@ export default function Exam() {
   };
 
   const handleFinish = async () => {
-    if (isSubmitting) return;
+    if (isSubmitting || !examId) return;
     
     setIsSubmitting(true);
+    console.log("--- EXAM SUBMISSION START ---");
     try {
-      const response = await api.submitExam({
-        exam_id: examId || '',
+      const submitPayload = {
+        exam_id: examId,
         answers: answers
-      });
+      };
+
+      console.log("Submit Payload:", submitPayload);
+
+      const response = await api.submitExam(submitPayload);
+      
+      console.log("Submit Response:", response);
+
       setResults(response);
       setIsFinished(true);
-      toast.success("Assessment submitted!");
-    } catch (error) {
-      console.error("Failed to submit exam:", error);
-      toast.error("Failed to submit assessment. Please try again.");
+      toast.success("Assessment submitted! Analyzing results...");
+    } catch (error: any) {
+      console.error("--- EXAM SUBMISSION FAILED ---");
+      console.error(error);
+      const errorMessage = error.response?.data?.detail || "Failed to submit assessment. Please check your connection.";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (step === "exam" && questions.length > 0) {
-    return (
-      <Layout showSidebar={false} title="Practice Exam">
-        <ExamRoom
-          questions={questions}
-          answers={answers}
-          onAnswer={setAnswer}
-          timeLeft={timeLeft}
-          isFinished={isFinished}
-          onFinish={handleFinish}
-          results={results}
-          onReset={() => setStep("configure")}
-        />
-        {isSubmitting && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-6 text-center">
-            <CircleNotch className="w-12 h-12 text-primary animate-spin mb-4" weight="bold" />
-            <p className="text-lg font-bold">Submitting your answers...</p>
-          </div>
-        )}
-      </Layout>
-    );
-  }
 
   return (
-    <Layout title="Exam Room">
-      <div className="container py-4 max-w-5xl px-4 sm:px-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 mb-8 text-center md:text-left">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Exam Room</h1>
-            <p className="text-sm text-muted-foreground mt-1">Configure and start your practice assessment</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8 space-y-8">
-            {/* Step 1: Collection Selection */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">1</div>
-                <h2 className="text-lg md:text-xl font-bold">Select Study Collection</h2>
-              </div>
-
-              {isLoadingCollections ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-32 rounded-lg bg-muted animate-pulse" />
-                  ))}
-                </div>
-              ) : collections.length === 0 ? (
-                <Card className="p-8 md:p-12 text-center border-dashed">
-                  <div className="w-14 h-14 md:w-16 md:h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <GraduationCap className="w-7 h-7 md:w-8 md:h-8 text-muted-foreground" />
+    <Layout 
+      showSidebar={step !== "exam"} 
+      title={step === "exam" ? "Practice Assessment" : "Exam Room"}
+    >
+      {step === "exam" ? (
+        questions.length > 0 ? (
+          <>
+            <ExamRoom
+              questions={questions}
+              answers={answers}
+              onAnswer={setAnswer}
+              timeLeft={timeLeft}
+              isFinished={isFinished}
+              onFinish={handleFinish}
+              results={results}
+              onReset={() => {
+                setStep("configure");
+                setQuestions([]);
+                setAnswers({});
+              }}
+            />
+            {isSubmitting && (
+              <div className="fixed inset-0 bg-background/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+                <div className="relative">
+                  <CircleNotch className="w-16 h-16 text-primary animate-spin mb-6" weight="bold" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Brain className="w-6 h-6 text-primary animate-pulse" weight="fill" />
                   </div>
-                  <h3 className="text-base md:text-lg font-bold mb-2">No collections found</h3>
-                  <p className="text-sm text-muted-foreground mb-6">Upload some study materials first and process them into a collection.</p>
-                  <Button asChild size="sm">
-                    <Link to="/upload">Upload & Process</Link>
-                  </Button>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {collections.map((collection) => (
-                    <button
-                      key={collection.collection_id}
-                      onClick={() => setActiveCollectionId(collection.collection_id)}
-                      className={cn(
-                        "group relative p-4 rounded-xl border transition-all duration-300 text-left h-full",
-                        activeCollectionId === collection.collection_id
-                          ? "border-primary bg-primary/5 shadow-md shadow-primary/10"
-                          : "bg-card hover:bg-accent/50 border-border"
-                      )}
-                    >
-                      <div className="flex items-start gap-3 md:gap-4">
+                </div>
+                <h2 className="text-2xl font-black tracking-tight mb-2">Analyzing Performance</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto">Questy AI is grading your responses and generating a personalized mastery path.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+            <Warning className="w-16 h-16 text-destructive" weight="fill" />
+            <h2 className="text-2xl font-bold">Generation Desync</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">The assessment state was lost or the questions were not received correctly.</p>
+            <Button onClick={() => setStep("configure")} variant="outline" className="rounded-full">Back to Configuration</Button>
+          </div>
+        )
+      ) : (
+        <div className="container py-6 max-w-6xl px-4 sm:px-6 relative">
+          {/* Generation Loading Overlay */}
+          {isGenerating && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+               <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center mb-6 relative">
+                  <CircleNotch className="w-12 h-12 text-primary animate-spin" weight="bold" />
+                  <RocketLaunch className="w-6 h-6 text-primary absolute" weight="fill" />
+               </div>
+               <h2 className="text-2xl font-black tracking-tight mb-2">Questy AI is Synthesizing</h2>
+               <p className="text-muted-foreground max-w-xs mx-auto">Building a custom assessment from your study materials...</p>
+            </div>
+          )}
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 text-center md:text-left">
+            <div className="space-y-1">
+              <div className="flex items-center justify-center md:justify-start gap-2 text-primary mb-2">
+                <Sparkle className="w-5 h-5 animate-pulse" weight="fill" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Questy Intelligence Engine</span>
+              </div>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">Practice Assessments</h1>
+              <p className="text-sm text-muted-foreground font-medium">Generate fresh, AI-powered exams from your study materials</p>
+            </div>
+            <Link to="/exam-history">
+              <Button variant="outline" className="rounded-full h-11 px-6 font-bold border-primary/20 hover:bg-primary/5 transition-all">
+                <ClockCounterClockwise className="w-4 h-4 mr-2" />
+                View Exam History
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-8 space-y-10">
+              {/* Step 1: Collection Selection */}
+              <section className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shadow-lg shadow-primary/20">01</div>
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Select Study Collection</h2>
+                    <p className="text-xs text-muted-foreground">Which material should Questy AI focus on?</p>
+                  </div>
+                </div>
+
+                {isLoadingCollections ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-28 rounded-2xl bg-muted animate-pulse border border-border/50" />
+                    ))}
+                  </div>
+                ) : collections.length === 0 ? (
+                  <Card className="p-10 text-center border-dashed border-2 bg-muted/30">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 border border-border/50">
+                      <GraduationCap className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-bold mb-1">No collections found</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">Upload and process study materials first to generate exams.</p>
+                    <Button asChild className="rounded-full font-bold px-8">
+                      <Link to="/upload">Get Started</Link>
+                    </Button>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {collections.map((collection) => (
+                      <button
+                        key={collection.collection_id}
+                        onClick={() => setActiveCollectionId(collection.collection_id)}
+                        className={cn(
+                          "group relative p-5 rounded-2xl border transition-all duration-300 text-left h-full flex items-center gap-4",
+                          activeCollectionId === collection.collection_id
+                            ? "border-primary bg-primary/[0.03] shadow-xl shadow-primary/5 ring-1 ring-primary"
+                            : "bg-card hover:bg-accent/50 border-border/50"
+                        )}
+                      >
                         <div className={cn(
-                          "w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center text-xl md:text-2xl transition-transform duration-300 shrink-0",
-                          activeCollectionId === collection.collection_id ? "bg-primary text-primary-foreground scale-110" : "bg-muted group-hover:scale-110"
+                          "w-14 h-14 rounded-xl flex items-center justify-center text-2xl transition-all duration-500 shrink-0",
+                          activeCollectionId === collection.collection_id 
+                            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 rotate-3 scale-110" 
+                            : "bg-muted group-hover:scale-105"
                         )}>
                           {collection.icon || <GraduationCap weight="fill" />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-sm md:text-lg mb-1 truncate">{collection.title}</h3>
-                          <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 leading-snug">{collection.description}</p>
+                        <div className="flex-1 min-w-0 pr-4">
+                          <h3 className="font-bold text-base mb-1 truncate">{collection.title}</h3>
+                          <p className="text-xs text-muted-foreground line-clamp-2 leading-snug">{collection.description}</p>
                         </div>
                         {activeCollectionId === collection.collection_id && (
-                          <CheckCircle className="w-5 h-5 text-primary absolute top-4 right-4" weight="fill" />
+                          <div className="absolute top-3 right-3 animate-in zoom-in duration-300">
+                            <CheckCircle className="w-6 h-6 text-primary" weight="fill" />
+                          </div>
                         )}
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Step 2: Customization */}
+              <section className={cn("space-y-6 transition-all duration-500", !activeCollectionId && "opacity-50 blur-[1px] pointer-events-none")}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black text-sm shadow-lg shadow-primary/20">02</div>
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight">Configure Assessment</h2>
+                    <p className="text-xs text-muted-foreground">Tailor the difficulty and scope of your session</p>
+                  </div>
                 </div>
-              )}
-            </section>
 
-            {/* Step 2: Customization */}
-            <section className={cn("transition-all duration-500", !activeCollectionId && "opacity-50 pointer-events-none")}>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">2</div>
-                <h2 className="text-lg md:text-xl font-bold">Customize Assessment</h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="rounded-xl border">
-                  <CardHeader className="pb-3 px-4">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6 px-4">
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Questions</label>
-                        <span className="text-base font-bold">{config.questionCount}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden group">
+                    <CardHeader className="bg-muted/30 pb-4">
+                      <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                        <Faders className="w-3.5 h-3.5 text-primary" weight="bold" />
+                        Global Parameters
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-8 pt-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs font-bold text-foreground">Total Questions</label>
+                          <Badge variant="secondary" className="font-black px-3 py-0.5 rounded-full text-primary">{config.questionCount}</Badge>
+                        </div>
+                        <Slider
+                          value={[config.questionCount]}
+                          onValueChange={([val]) => setConfig(p => ({ ...p, questionCount: val }))}
+                          max={30} min={5} step={5}
+                          className="py-2"
+                        />
+                        <div className="flex justify-between text-[10px] font-bold text-muted-foreground px-1">
+                          <span>5 Qs</span>
+                          <span>15 Qs</span>
+                          <span>30 Qs</span>
+                        </div>
                       </div>
-                      <Slider
-                        value={[config.questionCount]}
-                        onValueChange={([val]) => setConfig(p => ({ ...p, questionCount: val }))}
-                        max={30} min={5} step={5}
-                      />
-                    </div>
 
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">Difficulty</label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {['easy', 'medium', 'hard', 'mixed'].map(level => (
+                      <div className="space-y-4">
+                        <label className="text-xs font-bold text-foreground block">Cognitive Difficulty</label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {['easy', 'medium', 'hard', 'mixed'].map(level => (
+                            <button
+                              key={level}
+                              onClick={() => setConfig(p => ({ ...p, difficulty: level as any }))}
+                              className={cn(
+                                "py-2.5 px-1 text-[10px] uppercase font-black rounded-xl border transition-all truncate",
+                                config.difficulty === level
+                                  ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105"
+                                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+                              )}
+                            >
+                              {level}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-border/50 shadow-sm overflow-hidden">
+                    <CardHeader className="bg-muted/30 pb-4">
+                      <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                        <Target className="w-3.5 h-3.5 text-primary" weight="bold" />
+                        Integrated Question Types
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="grid grid-cols-2 gap-2">
+                        {questionTypes.map(t => (
                           <button
-                            key={level}
-                            onClick={() => setConfig(p => ({ ...p, difficulty: level as any }))}
+                            key={t.id}
+                            onClick={() => setConfig(p => ({
+                              ...p,
+                              questionTypes: p.questionTypes.includes(t.id)
+                                ? p.questionTypes.filter(id => id !== t.id)
+                                : [...p.questionTypes, t.id]
+                            }))}
                             className={cn(
-                              "py-2 px-1 text-[9px] md:text-[10px] uppercase font-bold rounded-lg border transition-all truncate",
-                              config.difficulty === level
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                              "flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all",
+                              config.questionTypes.includes(t.id)
+                                ? "bg-primary/5 border-primary text-primary font-bold shadow-sm"
+                                : "bg-card border-border/50 text-muted-foreground hover:bg-muted/50"
                             )}
                           >
-                            {level}
+                            <div className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center text-base",
+                              config.questionTypes.includes(t.id) ? "bg-primary text-primary-foreground" : "bg-muted"
+                            )}>
+                              {t.icon.length > 2 ? <Lightning weight="fill" className="w-4 h-4" /> : t.icon}
+                            </div>
+                            <span className="text-[11px] truncate">{t.label}</span>
                           </button>
                         ))}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <div className="p-4 rounded-xl bg-muted/50 border ">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Included Types</p>
-                  <div className="flex flex-wrap gap-2">
-                    {questionTypes.map(t => (
-                      <Badge
-                        key={t.id}
-                        variant={config.questionTypes.includes(t.id) ? "default" : "outline"}
-                        className="cursor-pointer py-1 px-3 rounded-full transition-all text-[9px] md:text-xs"
-                        onClick={() => setConfig(p => ({
-                          ...p,
-                          questionTypes: p.questionTypes.includes(t.id)
-                            ? p.questionTypes.filter(id => id !== t.id)
-                            : [...p.questionTypes, t.id]
-                        }))}
-                      >
-                        {t.label}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-[9px] md:text-[10px] text-muted-foreground mt-4 italic leading-tight">
-                    Note: Question types depend on collection content and AI availability.
-                  </p>
+                      <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 mt-6 flex items-start gap-3">
+                        <Lightning className="w-4 h-4 text-primary shrink-0 mt-0.5" weight="fill" />
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                          Pro Tip: Including diverse question types helps identify cognitive blind spots.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </div>
-            </section>
-          </div>
+              </section>
+            </div>
 
-          <div className="lg:col-span-4">
-            <div className="lg:sticky lg:top-24 space-y-4">
-              <Card className="rounded-xl border overflow-hidden glass-card">
-                <CardHeader className="bg-primary/5 pb-4 px-4 md:px-6">
-                  <CardTitle className="flex items-center gap-2 text-lg md:text-xl font-bold">
-                    <RocketLaunch className="w-5 h-5 md:w-6 md:h-6 text-primary" weight="fill" />
-                    Launch Exam
-                  </CardTitle>
-                  <CardDescription className="text-xs">Review your configuration before initiating</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6 px-4 md:px-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b">
-                      <span className="text-xs text-muted-foreground">Collection</span>
-                      <span className="text-xs font-bold truncate max-w-[120px] md:max-w-[150px]">
-                        {selectedCollection?.title || "Not Selected"}
-                      </span>
+            <div className="lg:col-span-4">
+              <div className="lg:sticky lg:top-24 space-y-6">
+                <Card className="rounded-3xl border-none shadow-2xl overflow-hidden glass-card relative">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-secondary to-primary animate-gradient-x" />
+                  <CardHeader className="bg-primary/5 pb-6 px-6 pt-8">
+                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground mb-4 shadow-xl shadow-primary/30">
+                      <RocketLaunch className="w-6 h-6" weight="fill" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3 md:gap-4">
-                      <div className="p-2 md:p-3 rounded-xl bg-muted/50 text-center">
-                        <span className="text-[10px] text-muted-foreground block">Questions</span>
-                        <span className="text-lg md:text-xl font-bold">{config.questionCount}</span>
+                    <CardTitle className="text-2xl font-black tracking-tight">Ready to Launch?</CardTitle>
+                    <CardDescription className="text-xs font-medium">Questy AI will synthesize questions based on your current setup.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-8 px-6 pb-8">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center py-3 border-b border-border/50">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-primary" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Material</span>
+                        </div>
+                        <span className="text-xs font-bold truncate max-w-[140px]">
+                          {selectedCollection?.title || "None Selected"}
+                        </span>
                       </div>
-                      <div className="p-2 md:p-3 rounded-xl bg-muted/50 text-center">
-                        <span className="text-[10px] text-muted-foreground block">Est. Time</span>
-                        <span className="text-lg md:text-xl font-bold">{Math.round(config.questionCount * 1.5)}m</span>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 rounded-2xl bg-muted/40 text-center border border-border/50 group hover:border-primary/30 transition-colors">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Volume</span>
+                          <span className="text-2xl font-black text-primary">{config.questionCount}</span>
+                          <span className="text-[10px] text-muted-foreground block">Questions</span>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-muted/40 text-center border border-border/50 group hover:border-primary/30 transition-colors">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground block mb-1">Estimate</span>
+                          <span className="text-2xl font-black text-primary">{Math.round(config.questionCount * 1.5)}</span>
+                          <span className="text-[10px] text-muted-foreground block">Minutes</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="p-3 md:p-4 rounded-xl bg-primary/5 border border-primary/10 flex items-start gap-3">
-                    <Sparkle className="w-4 h-4 text-primary shrink-0 mt-0.5" weight="fill" />
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Questy AI will generate fresh questions based on your specific study collection.
-                    </p>
-                  </div>
+                    <Button
+                      className="w-full py-8 text-lg font-black rounded-2xl shadow-2xl shadow-primary/30 transition-all hover:scale-[1.02] active:scale-95 group overflow-hidden relative"
+                      disabled={!activeCollectionId || isGenerating}
+                      onClick={handleStart}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <CircleNotch className="mr-3 w-6 h-6 animate-spin" weight="bold" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <span className="relative z-10 flex items-center">
+                            Start Practice Exam
+                            <CaretRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" weight="bold" />
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary-foreground/20 opacity-0 group-hover:opacity-10 transition-opacity" />
+                        </>
+                      )}
+                    </Button>
 
-                  <Button
-                    className="w-full py-5 md:py-6 text-base md:text-lg font-bold rounded-xl shadow-lg shadow-primary/20 transition-transform active:scale-95"
-                    disabled={!activeCollectionId || isGenerating}
-                    onClick={handleStart}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <CircleNotch className="mr-2 w-4 h-4 md:w-5 md:h-5 animate-spin" weight="bold" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        Start Assessment
-                        <CaretRight className="ml-2 w-4 h-4 md:w-5 md:h-5" />
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Link to="/questy-chat" className="block transition-transform active:scale-[0.98]">
-                <Card className="rounded-xl border-none shadow-sm bg-accent/50 hover:bg-accent/70 transition-colors cursor-pointer">
-                  <CardContent className="p-3 md:p-4 flex items-center gap-3 md:gap-4">
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-accent flex items-center justify-center text-accent-foreground shrink-0">
-                      <Brain className="w-4 h-4 md:w-5 md:h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs md:text-sm font-bold leading-none truncate">AI Study Partner</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground mt-1 truncate">Chat for quick revision</p>
-                    </div>
-                    <div className="h-8 w-8 md:h-10 md:w-10 flex items-center justify-center rounded-full bg-background/50 text-muted-foreground group-hover:text-primary transition-colors">
-                      <ArrowRight className="w-4 h-4" />
+                    <div className="text-center">
+                      <p className="text-[10px] font-bold text-muted-foreground italic flex items-center justify-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                        AI Engine Online & Ready
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
-              </Link>
+
+                <Link to="/questy-chat" className="block group">
+                  <Card className="rounded-2xl border-none shadow-sm bg-accent/30 hover:bg-accent/50 transition-all cursor-pointer">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-accent-foreground shrink-0 shadow-sm transition-transform group-hover:rotate-12">
+                        <Brain className="w-6 h-6" weight="fill" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black leading-none mb-1">AI Study Partner</p>
+                        <p className="text-[10px] text-muted-foreground font-medium truncate">Quick revision before you start?</p>
+                      </div>
+                      <div className="h-10 w-10 flex items-center justify-center rounded-full bg-background/50 text-muted-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                        <ArrowRight className="w-5 h-5" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </Layout>
   );
 }
