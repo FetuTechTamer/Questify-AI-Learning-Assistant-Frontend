@@ -44,12 +44,9 @@ export interface SubmitResponse {
   graded_items?: Array<{
     question_id: string;
     score: number;
-    score_attained?: number; // compat
     max_score: number;
     feedback: string;
-    feedback_note?: string; // compat
     correct?: boolean;
-    is_correct?: boolean; // compat
   }>;
   details?: any;
 }

@@ -85,8 +85,8 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                     <div className="grid gap-4">
                         {gradedItems.map((item: any, index: number) => {
                             const question = questions.find(q => q.question_id === item.question_id);
-                            const isCorrect = (item.is_correct === true) || (item.correct === true);
-                            const scoreAttained = item.score_attained ?? item.score ?? 0;
+                            const isCorrect = item.is_correct === true;
+                            const scoreAttained = item.score_attained ?? 0;
 
                             return (
                                 <Card key={item.question_id || index} className="group overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-xl glass-card">
@@ -131,7 +131,7 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
                                                         <Info className="w-5 h-5 shrink-0 text-primary mt-0.5" weight="bold" />
                                                         <div className="space-y-1">
                                                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/60">AI Feedback</p>
-                                                            <p className="italic font-medium">{item.feedback_note || item.feedback || "No specific feedback provided for this item."}</p>
+                                                            <p className="italic font-medium">{item.feedback_note || "No specific feedback provided for this item."}</p>
                                                         </div>
                                                     </div>
                                                     <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -translate-y-12 translate-x-12" />
