@@ -36,34 +36,31 @@ export const authService = {
   },
 
   getAvatar: async () => {
+    const cacheKey = 'user_avatar_blob_url';
+    // Return cached blob URL if it exists
+    const cached = (window as any)._avatarBlobCache;
+    if (cached) return cached;
+
     try {
-      console.log('[authService] Attempting to fetch avatar: GET /api/auth/user/avatar');
+      console.log('[authService] Fetching binary avatar: GET /api/auth/user/avatar');
       const response = await apiClient.get('/api/auth/user/avatar', {
-        // We use 'text' transform to safely inspect the response before JSON parsing
-        transformResponse: [(data) => data] 
+        responseType: 'blob'
       });
 
-      const contentType = response.headers['content-type'] || '';
       console.log('[authService] Response Status:', response.status);
-      console.log('[authService] Content-Type:', contentType);
+      console.log('[authService] Content-Type:', response.headers['content-type']);
 
-      if (!contentType.includes('application/json')) {
-        console.warn('[authService] Response is NOT JSON. Raw data preview:', typeof response.data === 'string' ? response.data.substring(0, 100) : 'Binary data');
-        throw new Error(`Invalid response type: ${contentType} (Status: ${response.status})`);
-      }
-
-      // If it is JSON, parse it
-      try {
-        const jsonData = JSON.parse(response.data);
-        console.log('[authService] Parsed JSON data:', jsonData);
-        return jsonData.data;
-      } catch (e) {
-        console.error('[authService] Failed to parse JSON:', response.data);
-        throw new Error(`Failed to parse JSON response (Status: ${response.status})`);
-      }
+      // Directly create object URL from blob
+      const imageUrl = URL.createObjectURL(response.data);
+      console.log('[authService] Created Blob URL:', imageUrl);
+      
+      // Store in a simple global cache to persist during session
+      (window as any)._avatarBlobCache = imageUrl;
+      
+      return imageUrl;
     } catch (error: any) {
-      console.error('[authService] GET /api/auth/user/avatar failed:', error);
-      throw error;
+      console.error('[authService] Failed to fetch binary avatar:', error);
+      return null; // Return null to allow fallback to default avatar
     }
   },
 
@@ -72,6 +69,8 @@ export const authService = {
     console.log('File:', file.name, file.type, file.size);
     const formData = new FormData();
     formData.append('file', file);
+    // Clear cache to force fresh fetch
+    (window as any)._avatarBlobCache = null;
     try {
       const response = await apiClient.put('/api/auth/user/profile/avatar', formData);
       console.log('Upload success:', response.data);
@@ -83,6 +82,8 @@ export const authService = {
   },
 
   deleteAvatar: async () => {
+    // Clear cache to force fresh fetch
+    (window as any)._avatarBlobCache = null;
     try {
       const response = await apiClient.delete('/api/auth/user/profile/avatar');
       return response.data.data;

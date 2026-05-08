@@ -26,14 +26,14 @@ export function Layout({ children, showSidebar = true, title }: LayoutProps) {
   const { preferences } = useAppContext();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, avatarUrl } = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
+  const memoizedAvatarUrl = useMemo(() => avatarUrl || getAvatarUrl(user?.avatar_url), [avatarUrl, user?.avatar_url]);
 
   // Don't show sidebar on landing page or auth pages
   const isPublicPage = location.pathname === "/" || location.pathname === "/auth";

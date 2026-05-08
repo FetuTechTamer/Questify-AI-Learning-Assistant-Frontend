@@ -61,11 +61,11 @@ const suggestedPrompts = [
 import { collectionsService, Collection } from "@/services/collectionsService";
 
 const QuestyChat = () => {
-  const { user } = useAuth();
+  const { user, avatarUrl } = useAuth();
   const { collectionId: materialCollectionId } = useMaterial();
   const isMobile = useIsMobile();
 
-  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
+  const memoizedAvatarUrl = useMemo(() => avatarUrl || getAvatarUrl(user?.avatar_url), [avatarUrl, user?.avatar_url]);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);

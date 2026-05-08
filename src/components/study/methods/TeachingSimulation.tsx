@@ -6,8 +6,9 @@ import { PDFViewer } from "@/components/study/PDFViewer";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, getAvatarUrl } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
     id: string;
@@ -18,6 +19,7 @@ interface Message {
 }
 
 export function TeachingSimulation({ onBack, chapterId, bookFilename, courseId, collectionId }: { onBack: () => void; bookFilename?: string; chapterId?: string; courseId?: string; collectionId?: string }) {
+    const { user, avatarUrl } = useAuth();
     const [messages, setMessages] = useState<Message[]>([
         {
             id: '1',
@@ -136,7 +138,17 @@ export function TeachingSimulation({ onBack, chapterId, bookFilename, courseId, 
                                     )}
                                 >
                                     <Avatar className={cn("w-10 h-10 border-2 shrink-0", msg.sender === 'ai' ? "border-teal-200" : "border-primary/20")}>
-                                        <AvatarFallback>{msg.sender === 'ai' ? <Robot className="w-6 h-6 text-teal-600" /> : <User className="w-6 h-6" />}</AvatarFallback>
+                                        {msg.sender === 'ai' ? (
+                                            <>
+                                                <AvatarImage src="" /> {/* AI doesn't have an image path here yet */}
+                                                <AvatarFallback><Robot className="w-6 h-6 text-teal-600" /></AvatarFallback>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <AvatarImage src={avatarUrl || getAvatarUrl(user?.avatar_url)} alt={user?.full_name} />
+                                                <AvatarFallback><User className="w-6 h-6" /></AvatarFallback>
+                                            </>
+                                        )}
                                     </Avatar>
 
                                     <div className={cn(

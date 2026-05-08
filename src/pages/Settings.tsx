@@ -45,7 +45,7 @@ const sections: SettingSection[] = [
 export default function Settings() {
   const [activeSection, setActiveSection] = useState("account");
   const navigate = useNavigate();
-  const { user, logout, refreshProfile } = useAuth();
+  const { user, logout, refreshProfile, avatarUrl } = useAuth();
   
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -53,7 +53,7 @@ export default function Settings() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   
-  const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
+  const memoizedAvatarUrl = useMemo(() => avatarUrl || getAvatarUrl(user?.avatar_url), [avatarUrl, user?.avatar_url]);
   
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");

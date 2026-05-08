@@ -26,6 +26,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   isAdmin: boolean;
   refreshProfile: () => Promise<void>;
+  avatarUrl: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,17 +36,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  const fetchAvatar = async () => {
+    try {
+      const blobUrl = await authService.getAvatar();
+      setAvatarUrl(blobUrl);
+    } catch (error) {
+      console.error("Failed to fetch avatar blob:", error);
+    }
+  };
 
   const refreshProfile = async () => {
     const token = localStorage.getItem('access_token');
     if (!token) return;
 
     try {
-      const profile = await authService.getProfile();
-      console.log('User profile refreshed:', profile);
-      if (profile?.avatar_url) {
-        console.log('Current avatar_url in state:', profile.avatar_url);
-      }
+      const [profile] = await Promise.all([
+        authService.getProfile(),
+        fetchAvatar()
+      ]);
+      console.log('User profile and avatar refreshed');
       setUser(profile);
     } catch (error) {
       console.error("Failed to refresh user profile:", error);
@@ -58,8 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (token) {
         setSession({ access_token: token });
         try {
-          const profile = await authService.getProfile();
-          console.log('User profile loaded on mount:', profile);
+          const [profile] = await Promise.all([
+            authService.getProfile(),
+            fetchAvatar()
+          ]);
+          console.log('User profile and avatar loaded on mount');
           setUser(profile);
           setIsAdmin(profile?.role === 'admin');
         } catch (error) {
@@ -82,7 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (token) {
         setSession({ access_token: token });
-        const profile = await authService.getProfile();
+        const [profile] = await Promise.all([
+          authService.getProfile(),
+          fetchAvatar()
+        ]);
         setUser(profile);
         setIsAdmin(profile?.role === 'admin');
       } else {
@@ -128,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       isAdmin,
       refreshProfile,
+      avatarUrl,
     }}>
       {children}
     </AuthContext.Provider>

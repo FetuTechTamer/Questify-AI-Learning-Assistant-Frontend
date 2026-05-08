@@ -5,15 +5,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const avatarCache = new Map<string, string>();
+
 export function getAvatarUrl(path: string | null | undefined): string {
+  // Priority 1: Check for the authoritative binary blob cache first
+  const binaryBlob = (window as any)._avatarBlobCache;
+  if (binaryBlob) return binaryBlob;
+
   if (!path) return "";
-  if (path.startsWith("http")) {
-    return path;
+  
+  if (avatarCache.has(path)) {
+    return avatarCache.get(path)!;
   }
-  
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://questiai-43b71abdd48b.herokuapp.com';
-  const cleanBase = baseUrl.replace(/\/$/, "");
-  const cleanPath = path.replace(/^\//, "");
-  
-  return `${cleanBase}/${cleanPath}`;
+
+  let fullUrl = "";
+  if (path.startsWith("https") || path.startsWith("blob:") || path.startsWith("data:")) {
+    fullUrl = path;
+  } else {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://questiai-43b71abdd48b.herokuapp.com';
+    const cleanBase = baseUrl.replace(/\/$/, "");
+    const cleanPath = path.replace(/^\//, "");
+    fullUrl = `${cleanBase}/${cleanPath}`;
+  }
+
+  avatarCache.set(path, fullUrl);
+  return fullUrl;
 }
