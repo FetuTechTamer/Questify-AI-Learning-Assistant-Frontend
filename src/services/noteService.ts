@@ -24,32 +24,13 @@ export const noteService = {
   generateNote: async (method: string, collectionId: string): Promise<any> => {
     const slug = mapMethodSlug(method);
     const url = `/api/notes/${slug}`;
-    
-    // Minimal payload based on user's spec. Extra fields often cause 422 on strict backends.
-    const payload = {
-      collection_id: collectionId
-    };
-
-    console.log(`[API POST] URL: ${url}`);
-    console.log(`[API POST] Body:`, payload);
+    const payload = { collection_id: collectionId };
 
     try {
       const response = await apiClient.post(url, payload);
-      console.log(`[API POST] Status: ${response.status}`);
-      console.log(`[API POST] Response Data:`, response.data);
       return response.data.data || response.data;
     } catch (error: any) {
-      if (error.response?.status === 422) {
-        console.group(`[API 422 ERROR] Validation Failed for ${url}`);
-        console.error("Validation Details:", error.response.data.detail || error.response.data);
-        console.log("Sent Payload:", payload);
-        console.groupEnd();
-      } else {
-        console.error(`[API POST] FAILED: ${url}`, {
-          status: error.response?.status,
-          data: error.response?.data
-        });
-      }
+      console.error(`[API POST] Failed: ${url}`, error);
       throw error;
     }
   },
@@ -61,20 +42,17 @@ export const noteService = {
     const slug = mapMethodSlug(method);
     const url = `/api/notes/${slug}/${collectionId}`;
 
-    console.log(`[API GET] URL: ${url}`);
-
     try {
       const response = await apiClient.get(url);
-      console.log(`[API GET] Status: ${response.status}`);
-      console.log(`[API GET] Response Data:`, response.data);
-      
       const data = response.data.data || response.data || [];
+      
+      // Return as array. If backend returns single object, wrap it.
+      if (data && !Array.isArray(data)) {
+        return [data];
+      }
       return Array.isArray(data) ? data : [];
     } catch (error: any) {
-      console.error(`[API GET] FAILED: ${url}`, {
-        status: error.response?.status,
-        data: error.response?.data
-      });
+      console.error(`[API GET] Failed: ${url}`, error);
       throw error;
     }
   },
@@ -86,17 +64,10 @@ export const noteService = {
     const slug = mapMethodSlug(method);
     const url = `/api/notes/${slug}/${noteId}`;
 
-    console.log(`[API DELETE] URL: ${url}`);
-
     try {
-      const response = await apiClient.delete(url);
-      console.log(`[API DELETE] Status: ${response.status}`);
-      console.log(`[API DELETE] Response Data:`, response.data);
+      await apiClient.delete(url);
     } catch (error: any) {
-      console.error(`[API DELETE] FAILED: ${url}`, {
-        status: error.response?.status,
-        data: error.response?.data
-      });
+      console.error(`[API DELETE] Failed: ${url}`, error);
       throw error;
     }
   }

@@ -66,14 +66,22 @@ export const chatService = {
     /**
      * Sends a message to Questy AI.
      */
-    ask: async (params: { message: string; session_id?: string; collection_id?: string }): Promise<AskResponse> => {
+    ask: async (params: { question: string; session_id: string; collection_id: string }): Promise<AskResponse> => {
         const url = '/api/chat/ask';
+        
+        // Construct the exact payload required by the backend
+        const payload = {
+            collection_id: params.collection_id,
+            question: params.question,
+            session_id: params.session_id
+        };
+
         console.group(`[Chat API POST] ${url}`);
-        console.log("Payload:", params);
+        console.log("Payload:", payload);
         console.groupEnd();
         
         try {
-            const response = await apiClient.post(url, params);
+            const response = await apiClient.post(url, payload);
             console.log(`[Chat API SUCCESS] POST ${url}`, response.data);
             return response.data.data || response.data;
         } catch (error: any) {
@@ -82,6 +90,23 @@ export const chatService = {
                 data: error.response?.data,
                 message: error.message
             });
+            throw error;
+        }
+    },
+
+    /**
+     * Creates a new chat session for a collection.
+     */
+    createSession: async (collection_id: string): Promise<ChatSession> => {
+        const url = '/api/chat/sessions';
+        console.log(`[Chat API POST] ${url}`, { collection_id });
+        
+        try {
+            const response = await apiClient.post(url, { collection_id });
+            console.log(`[Chat API SUCCESS] POST ${url}`, response.data);
+            return response.data.data || response.data;
+        } catch (error: any) {
+            console.error(`[Chat API ERROR] POST ${url}`, error.response?.data);
             throw error;
         }
     },

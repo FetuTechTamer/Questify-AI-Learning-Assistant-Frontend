@@ -58,20 +58,25 @@ const suggestedPrompts = [
   }
 ];
 
+import { collectionsService, Collection } from "@/services/collectionsService";
+
 const QuestyChat = () => {
   const { user } = useAuth();
-  const { collectionId } = useMaterial();
+  const { collectionId: materialCollectionId } = useMaterial();
   const isMobile = useIsMobile();
 
   const memoizedAvatarUrl = useMemo(() => getAvatarUrl(user?.avatar_url), [user?.avatar_url]);
 
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isDeletingSession, setIsDeletingSession] = useState<string | null>(null);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
@@ -79,34 +84,46 @@ const QuestyChat = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch sessions on mount
+  // Fetch sessions when collection changes
   useEffect(() => {
-    fetchSessions();
-  }, []);
-
-  // Fetch messages when active session changes
-  useEffect(() => {
-    if (activeSessionId) {
-      fetchMessages(activeSessionId);
-    } else {
-      setMessages([]);
+    if (selectedCollectionId) {
+      fetchSessions(selectedCollectionId);
     }
-  }, [activeSessionId]);
+  }, [selectedCollectionId]);
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+  const fetchCollections = async () => {
+    setIsLoadingCollections(true);
+    try {
+      const data = await collectionsService.getCollections();
+      setCollections(data);
+    } catch (error) {
+      console.error("Failed to load collections");
+    } finally {
+      setIsLoadingCollections(false);
     }
-  }, [messages, isTyping]);
+  };
 
-  const fetchSessions = async () => {
+  const fetchSessions = async (collectionId?: string) => {
     setIsLoadingSessions(true);
     try {
       const data = await chatService.getSessions();
-      setSessions(Array.isArray(data) ? data : []);
+      const sessionList = Array.isArray(data) ? data : [];
+      setSessions(sessionList);
+      
+      // Auto-select the most recent session
+      if (sessionList.length > 0) {
+        // Sort by updated_at descending
+        const sorted = [...sessionList].sort((a, b) => 
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+        setActiveSessionId(sorted[0].session_id);
+        console.log(`[Chat] Auto-selected latest session: ${sorted[0].session_id}`);
+      } else {
+        setActiveSessionId(null);
+      }
     } catch (error) {
       setSessions([]);
+      setActiveSessionId(null);
     } finally {
       setIsLoadingSessions(false);
     }
@@ -150,25 +167,73 @@ const QuestyChat = () => {
     }
   };
 
-  const handleSend = async () => {
+  // Initial load
+  useEffect(() => {
+    fetchCollections();
+  }, []);
+
+  // Sync with material context if it exists
+  useEffect(() => {
+    if (materialCollectionId && !selectedCollectionId) {
+      setSelectedCollectionId(materialCollectionId);
+    }
+  }, [materialCollectionId]);
+
+  // Fetch messages when active session changes
+  useEffect(() => {
+    if (activeSessionId) {
+      fetchMessages(activeSessionId);
+    } else {
+      setMessages([]);
+    }
+  }, [activeSessionId]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isTyping]);
+
+  const handleSend = async (retryCount = 0) => {
     if (!inputValue.trim() || isTyping) return;
+    
+    if (!selectedCollectionId) {
+      toast.error("Please select a collection to start chatting.");
+      return;
+    }
 
     const currentInput = inputValue;
-    setInputValue('');
+    if (retryCount === 0) setInputValue('');
 
-    const userMsg: ChatMessage = {
-      role: 'user',
-      content: currentInput,
-      timestamp: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
 
     try {
+      // Requirement: Always ensure we have a session from backend
+      let sessionId = activeSessionId;
+      
+      if (!sessionId) {
+        console.log("[Chat] No active session. Creating one now...");
+        const newSession = await chatService.createSession(selectedCollectionId);
+        sessionId = newSession.session_id;
+        setActiveSessionId(sessionId);
+        fetchSessions(selectedCollectionId);
+      }
+
+      const userMsg: ChatMessage = {
+        role: 'user',
+        content: currentInput,
+        timestamp: new Date().toISOString()
+      };
+      
+      if (retryCount === 0) {
+        setMessages(prev => [...prev, userMsg]);
+      }
+
       const response = await chatService.ask({
-        message: currentInput,
-        session_id: activeSessionId || undefined,
-        collection_id: collectionId || undefined
+        question: currentInput,
+        session_id: sessionId!,
+        collection_id: selectedCollectionId
       });
 
       const aiMsg: ChatMessage = {
@@ -179,29 +244,35 @@ const QuestyChat = () => {
 
       setMessages(prev => [...prev, aiMsg]);
 
-      if (!activeSessionId && response.session_id) {
-        setActiveSessionId(response.session_id);
-        fetchSessions();
-      }
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        toast.error("Chat service not ready – please contact support");
-        const fallbackMsg: ChatMessage = {
-          role: 'assistant',
-          content: "I'm sorry, I'm currently in training mode and cannot access my full knowledge base right now. Please try again later or contact support if the issue persists.",
-          timestamp: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, fallbackMsg]);
-      } else {
-        toast.error("Failed to get response.");
+      console.error("[Chat] Request failed:", error);
+      
+      // Requirement 4: If 404, re-create session and retry once
+      if (error.response?.status === 404 && retryCount < 1) {
+        console.log("[Chat] Session expired (404). Re-creating and retrying...");
+        setActiveSessionId(null);
+        setIsTyping(false); // Reset to allow retry call to set it back
+        return handleSend(retryCount + 1);
       }
+
+      const errorText = error.response?.status === 404 
+        ? "No chat session available. Please contact support."
+        : "Failed to get response. Please try again.";
+        
+      toast.error(errorText);
+      const errorMsg: ChatMessage = {
+        role: 'assistant',
+        content: `I'm sorry, I encountered an error: ${errorText}`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
     }
   };
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col h-full gap-4 overflow-hidden">
       <Button
         onClick={createNewChat}
         className="w-full h-11 bg-primary text-primary-foreground hover:opacity-90 rounded-xl shadow-lg shadow-primary/20 font-bold gap-2"
@@ -210,9 +281,64 @@ const QuestyChat = () => {
         New Session
       </Button>
 
+      {/* --- COLLECTIONS SECTION --- */}
+      <Card className="flex-[0.6] rounded-xl border-none shadow-sm flex flex-col overflow-hidden">
+        <CardHeader className="p-3 border-b bg-muted/30">
+          <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <BookOpen className="w-3 h-3 text-primary" />
+            Knowledge Base
+          </CardTitle>
+        </CardHeader>
+        <ScrollArea className="flex-1 w-full">
+          <div className="p-2 space-y-1">
+            {isLoadingCollections ? (
+              <div className="flex flex-col items-center justify-center py-6 gap-2 opacity-50">
+                <CircleNotch className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Scanning...</span>
+              </div>
+            ) : collections.length === 0 ? (
+              <div className="p-4 text-center">
+                <p className="text-[10px] text-muted-foreground">No collections found.</p>
+              </div>
+            ) : (
+              collections.map((collection) => (
+                <div
+                  key={collection.collection_id}
+                  onClick={() => setSelectedCollectionId(collection.collection_id)}
+                  className={cn(
+                    "group p-2.5 rounded-xl cursor-pointer transition-all duration-200 relative flex items-center gap-3",
+                    selectedCollectionId === collection.collection_id
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "hover:bg-muted"
+                  )}
+                >
+                  <div className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs",
+                    selectedCollectionId === collection.collection_id ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    {collection.title?.charAt(0) || "T"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{collection.title}</p>
+                    <p className="text-[10px] opacity-60 truncate">Active Library</p>
+                  </div>
+                  {selectedCollectionId === collection.collection_id && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </ScrollArea>
+      </Card>
+
+      {/* --- RECENT SESSIONS --- */}
       <Card className="flex-1 rounded-xl border-none shadow-sm flex flex-col overflow-hidden">
         <CardHeader className="p-3 border-b bg-muted/30">
-          <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Recent Synapses</CardTitle>
+          <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <Clock className="w-3 h-3" />
+            Recent Synapses
+          </CardTitle>
         </CardHeader>
         <ScrollArea className="flex-1 w-full">
           <div className="p-2 space-y-1">
@@ -270,11 +396,11 @@ const QuestyChat = () => {
 
   return (
     <DashboardLayout title="Questy AI Partner">
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-120px)] gap-4 lg:gap-6 p-2 lg:p-4">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-110px)] gap-4 lg:gap-6 p-3 lg:p-6 overflow-hidden">
 
-        {/* --- SIDEBAR --- */}
+        {/* --- SIDEBAR (Desktop) --- */}
         {!isMobile && (
-          <div className="w-80 flex-shrink-0 flex flex-col gap-4">
+          <div className="w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden">
             <SidebarContent />
           </div>
         )}
@@ -282,21 +408,26 @@ const QuestyChat = () => {
         {/* --- CHAT INTERFACE --- */}
         <Card className="flex-1 flex flex-col rounded-xl border-none relative glass-card overflow-hidden">
           {isMobile && (
-            <div className="flex items-center justify-between p-3 border-b bg-background/50 backdrop-blur-md">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-xl sticky top-0 z-10">
               <Sheet open={mobileHistoryOpen} onOpenChange={setMobileHistoryOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2 font-bold">
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl border-dashed gap-2 font-bold px-3">
                     <List className="w-4 h-4" />
-                    History
+                    {selectedCollectionId ? 
+                      collections.find(c => c.collection_id === selectedCollectionId)?.title : 
+                      "Select Topic"}
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="left" className="p-4 w-80 border-0">
+                <SheetContent side="left" className="p-4 w-[85%] border-0 overflow-y-auto">
                   <SidebarContent />
                 </SheetContent>
               </Sheet>
-              <Button onClick={createNewChat} variant="ghost" size="sm" className="text-primary font-bold">
-                <Plus className="w-4 h-4 mr-1" /> New
-              </Button>
+              
+              <div className="flex items-center gap-2">
+                <Button onClick={createNewChat} variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-primary">
+                  <Plus className="w-5 h-5" weight="bold" />
+                </Button>
+              </div>
             </div>
           )}
 
@@ -309,13 +440,27 @@ const QuestyChat = () => {
                 exit={{ opacity: 0, scale: 1.05 }}
                 className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 text-center overflow-y-auto"
               >
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 shadow-inner">
-                  <Robot className="w-8 h-8 text-primary" weight="fill" />
+                <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-8 shadow-inner animate-bounce-subtle">
+                  <Robot className="w-10 h-10 text-primary" weight="fill" />
                 </div>
-                <h2 className="text-2xl lg:text-3xl font-bold tracking-tight mb-2">How can I help you study?</h2>
-                <p className="text-muted-foreground max-w-sm mb-8 lg:mb-12 text-sm lg:text-base">
-                  I'm your AI study partner. I can help you understand complex topics, create study plans, and test your knowledge.
-                </p>
+                
+                {!selectedCollectionId ? (
+                  <>
+                    <h2 className="text-2xl lg:text-3xl font-black tracking-tight mb-3">Select a Knowledge Base</h2>
+                    <p className="text-muted-foreground max-w-sm mb-12 text-sm lg:text-base leading-relaxed">
+                      To start our study session, please select a collection from the sidebar on the left. I'll use that material to help you learn.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-2xl lg:text-3xl font-black tracking-tight mb-3">
+                      Ready for <span className="text-primary">{collections.find(c => c.collection_id === selectedCollectionId)?.title}</span>?
+                    </h2>
+                    <p className="text-muted-foreground max-w-sm mb-8 lg:mb-12 text-sm lg:text-base leading-relaxed">
+                      I'm connected to your material. Ask me to explain a concept, create a summary, or test your knowledge.
+                    </p>
+                  </>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4 max-w-2xl w-full">
                   {suggestedPrompts.map((item, index) => (
@@ -426,23 +571,24 @@ const QuestyChat = () => {
                       handleSend();
                     }
                   }}
-                  placeholder="Ask anything..."
-                  className="border-none focus-visible:ring-0 min-h-[40px] lg:min-h-[48px] max-h-[150px] lg:max-h-[200px] px-4 lg:px-5 py-2 lg:py-3 text-sm bg-transparent resize-none"
+                  disabled={!selectedCollectionId || isTyping}
+                  placeholder={selectedCollectionId ? "Ask anything about this collection..." : "Select a collection to start chatting..."}
+                  className="border-none focus-visible:ring-0 min-h-[40px] lg:min-h-[48px] max-h-[150px] lg:max-h-[200px] px-4 lg:px-5 py-2 lg:py-3 text-sm bg-transparent resize-none disabled:opacity-50"
                 />
 
                 <div className="flex items-center justify-between px-3 lg:px-4 py-1.5 lg:py-2 bg-muted/20 border-t">
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground" disabled={!selectedCollectionId}>
                       <Paperclip className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 lg:h-9 lg:w-9 rounded-full text-muted-foreground" disabled={!selectedCollectionId}>
                       <Microphone className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
                     </Button>
                   </div>
 
                   <Button
                     onClick={handleSend}
-                    disabled={!inputValue.trim() || isTyping}
+                    disabled={!inputValue.trim() || isTyping || !selectedCollectionId}
                     className="h-8 lg:h-10 px-4 lg:px-6 rounded-full font-bold gap-2 group transition-all active:scale-95 shadow-md shadow-primary/20 text-xs lg:text-sm"
                   >
                     {isTyping ? <CircleNotch className="w-4 h-4 animate-spin" /> : "Send"}

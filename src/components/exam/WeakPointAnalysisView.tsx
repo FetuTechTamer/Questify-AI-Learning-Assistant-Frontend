@@ -11,6 +11,7 @@ import {
     Info
 } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -24,13 +25,24 @@ export function WeakPointAnalysisView({ results, questions, answers }: WeakPoint
     const navigate = useNavigate();
     
     // Extract scores based on exact backend spec
-    const totalScore = results?.total_score ?? 0;
-    const maxScore = results?.max_score ?? 0;
+    const totalScore = typeof results?.total_score === 'number' ? results.total_score : 0;
+    const maxScore = typeof results?.max_score === 'number' ? results.max_score : 0;
     const scorePercentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
     const status = results?.status || "graded";
 
     // Graded items from spec
-    const gradedItems = results?.graded_items || [];
+    const gradedItems = Array.isArray(results?.graded_items) ? results.graded_items : [];
+
+    if (!results) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+                <Brain className="w-16 h-16 text-muted-foreground/20 mb-4 animate-pulse" />
+                <h2 className="text-xl font-bold">No results available</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto mt-2">We couldn't find the assessment results. Please try again or contact support.</p>
+                <Button onClick={() => window.location.reload()} className="mt-6 rounded-full">Retry</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background/50 p-4 md:p-8 animate-in fade-in duration-700">

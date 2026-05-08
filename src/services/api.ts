@@ -35,21 +35,26 @@ export interface ExamData {
 }
 
 
+export interface GradedItem {
+  question_id: string;
+  user_answer: any;
+  is_correct: boolean;
+  score_attained: number;
+  feedback_note: string;
+}
+
 export interface SubmitResponse {
-  score?: number; // fallback
-  total_score?: number;
-  max_score?: number;
-  status?: string;
+  submission_id?: string;
+  exam_id: string;
+  total_score: number;
+  max_score: number;
+  status: string;
+  message?: string;
   feedback?: string;
-  graded_items?: Array<{
-    question_id: string;
-    score: number;
-    max_score: number;
-    feedback: string;
-    correct?: boolean;
-  }>;
+  graded_items: GradedItem[];
   details?: any;
 }
+
 
 export const api = {
   // Exams
@@ -109,9 +114,36 @@ export const api = {
     exam_id: string; 
     answers: Record<string, any> 
   }): Promise<SubmitResponse> => {
-    const response = await apiClient.post('/api/exam/submit', params);
-    return response.data.data || response.data;
+    const url = '/api/exam/submit';
+    
+    try {
+      const response = await apiClient.post(url, params);
+      console.log('--- EXAM SUBMISSION SUCCESS ---', response.data);
+      // Return the inner data object if present, otherwise the whole body
+      const results = response.data.data || response.data;
+      // Ensure it has the message from the parent if returning inner data
+      if (response.data.data && response.data.message && !results.message) {
+        results.message = response.data.message;
+      }
+      return results;
+    } catch (error: any) {
+      console.error('--- EXAM SUBMISSION FAILED ---', error);
+      throw error;
+    }
   },
+
+  getExamHistory: async (): Promise<SubmitResponse[]> => {
+    const url = '/api/exam/history';
+    try {
+      const response = await apiClient.get(url);
+      console.log('--- FETCH EXAM HISTORY SUCCESS ---', response.data);
+      return response.data.data || response.data || [];
+    } catch (error: any) {
+      console.error('--- FETCH EXAM HISTORY FAILED ---', error);
+      throw error;
+    }
+  },
+
 
   // Study Methods
   recordPomodoro: async (params: { collection_id: string; duration: number; completed: boolean }) => {

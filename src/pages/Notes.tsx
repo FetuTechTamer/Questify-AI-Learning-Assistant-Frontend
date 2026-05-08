@@ -32,7 +32,7 @@ import {
 import { jsPDF } from "jspdf";
 
 // Filter only the 6 specified methods
-const supportedMethodIds = ['sentence', 'boxing', 'mindmap', 'outline', 'charting', 'cornell'];
+const supportedMethodIds = ['sentence', 'boxing', 'outline', 'mindmap', 'charting', 'cornell'];
 const filteredMethods = noteMethods.filter(m => supportedMethodIds.includes(m.id)).sort((a, b) => supportedMethodIds.indexOf(a.id) - supportedMethodIds.indexOf(b.id));
 
 // Production implementation with real API integration
@@ -119,26 +119,20 @@ export default function Notes() {
       return;
     }
 
-    console.log(`[Notes Hub] Launching Studio for collection ${selectedCollectionId}, method ${selectedMethodId}`);
     setIsGenerating(true);
-
     try {
-      const result = await noteService.generateNote(selectedMethodId, selectedCollectionId);
-      console.log(`[Notes Hub] Generation response:`, result);
+      // POST /api/notes/{method}
+      await noteService.generateNote(selectedMethodId, selectedCollectionId);
+      toast.success("Note generated successfully!");
 
-      if (result && (result.id || result.note_id)) {
-        // Immediate UI update to prevent "shows nothing" feeling
-        setNotes(prev => [result, ...prev]);
-        toast.success("Note generated successfully!");
-      } else {
-        toast.success("AI Studio is processing your materials...");
-      }
-
-      // Re-fetch to ensure sync with backend (handles multi-note requirement)
+      // On success, refresh the list via GET
       await fetchNotes();
     } catch (error: any) {
       console.error(`[Notes Hub] Launch failed:`, error);
-      const errorMsg = error.response?.data?.message || `AI service error (${error.response?.status || 'Unknown'})`;
+      const methodName = filteredMethods.find(m => m.id === selectedMethodId)?.name || selectedMethodId;
+      const errorMsg = (selectedMethodId === 'outline' || selectedMethodId === 'mindmap' || selectedMethodId === 'cornell' || selectedMethodId === 'charting')
+        ? `Failed to generate ${methodName} note. Please try again.`
+        : (error.response?.data?.message || `AI service error (${error.response?.status || 'Unknown'})`);
       toast.error(errorMsg);
     } finally {
       setIsGenerating(false);
@@ -148,12 +142,19 @@ export default function Notes() {
   const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation();
     try {
+      // DELETE /api/notes/{method}/{note_id}
       await noteService.deleteNote(selectedMethodId, noteId);
       toast.success("Note removed successfully.");
+
+      // On success, refresh the list via GET
       await fetchNotes();
     } catch (error) {
       console.error("Delete failed:", error);
-      toast.error("Could not delete this note.");
+      const methodName = filteredMethods.find(m => m.id === selectedMethodId)?.name || selectedMethodId;
+      const errorMsg = (selectedMethodId === 'outline' || selectedMethodId === 'mindmap' || selectedMethodId === 'cornell' || selectedMethodId === 'charting')
+        ? `Failed to delete ${methodName} note.`
+        : "Could not delete this note.";
+      toast.error(errorMsg);
     }
   };
 
@@ -366,13 +367,29 @@ export default function Notes() {
                                 </Button>
                               </div>
                             </div>
-                            <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                                {new Date(note.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                              </p>
-                              <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                                {note.title}
-                              </h3>
+                            <div className="space-y-3">
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1 flex items-center gap-2">
+                                  {note.created_at ? new Date(note.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Recently'}
+                                  <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                                  <span className="text-primary/80">
+                                    {collections.find(c => c.collection_id === (note.collection_id || selectedCollectionId))?.title || 'Unknown Collection'}
+                                  </span>
+                                </p>
+                                <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">
+                                  {collections.find(c => c.collection_id === (note.collection_id || selectedCollectionId))?.title || note.title || 'Untitled Note'}
+                                </h3>
+                              </div>
+
+                              {/* Simplified Content Preview */}
+                              <div className="text-sm">
+                                <p className="text-muted-foreground text-[13px] line-clamp-3 leading-relaxed italic">
+                                  {note.summary || note.description ||
+                                    (Array.isArray(note.sections) && note.sections[0]?.bullets?.[0]
+                                      ? note.sections[0].bullets[0]
+                                      : `This ${note.method || selectedMethodId} note contains structured learning data. Click to open in AI Studio.`)}
+                                </p>
+                              </div>
                             </div>
                             <div className="pt-4 border-t flex items-center justify-between text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                               Open in Studio

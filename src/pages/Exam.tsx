@@ -224,7 +224,11 @@ export default function Exam() {
     } catch (error: any) {
       console.error("--- EXAM SUBMISSION FAILED ---");
       console.error(error);
-      const errorMessage = error.response?.data?.detail || "Failed to submit assessment. Please check your connection.";
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.message || 
+                          error.response?.data?.error ||
+                          error.message ||
+                          "Failed to submit assessment. Please check your connection.";
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
