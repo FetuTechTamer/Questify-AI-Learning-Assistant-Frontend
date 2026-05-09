@@ -9,13 +9,49 @@ import { SQ3RMethod } from "@/components/study/methods/SQ3RMethod";
 import { LeitnerSystem } from "@/components/study/methods/LeitnerSystem";
 import { ActiveRecall } from "@/components/study/methods/ActiveRecall";
 import { Layout } from "@/components/layout/Layout";
-import { Collection } from "@/services/api";
+import { Collection } from "@/services/collectionsService";
 import { studyService } from "@/services/studyService";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Sparkle, CircleNotch, ArrowLeft, Warning } from "@phosphor-icons/react";
 
-const SUPPORTED_METHODS: StudyMethodId[] = ['pomodoro', 'feynman', 'leitner', 'sq3r', 'active_recall'];
+const SUPPORTED_METHODS: StudyMethodId[] = [
+  "pomodoro",
+  "feynman",
+  "leitner",
+  "sq3r",
+  "active_recall",
+];
+
+// Maps a StudyMethodId to the matching named GET and POST service methods
+const methodServiceMap: Record<
+  StudyMethodId,
+  {
+    generate: (id: string) => Promise<any>;
+    fetch: (id: string) => Promise<any>;
+  }
+> = {
+  pomodoro: {
+    generate: studyService.generatePomodoro,
+    fetch: studyService.getPomodoro,
+  },
+  feynman: {
+    generate: studyService.generateFeynman,
+    fetch: studyService.getFeynman,
+  },
+  leitner: {
+    generate: studyService.generateLeitner,
+    fetch: studyService.getLeitner,
+  },
+  sq3r: {
+    generate: studyService.generateSQ3R,
+    fetch: studyService.getSQ3R,
+  },
+  active_recall: {
+    generate: studyService.generateActiveRecall,
+    fetch: studyService.getActiveRecall,
+  },
+};
 
 export default function StudyRoom() {
   const location = useLocation();
@@ -23,53 +59,79 @@ export default function StudyRoom() {
 
   const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
   const [activeMethod, setActiveMethod] = useState<StudyMethodId | null>(null);
-  
+
   // API Data States
   const [studyData, setStudyData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
 
-  const fetchStudyData = useCallback(async (method: string, collectionId: string) => {
-    if (!SUPPORTED_METHODS.includes(method as StudyMethodId)) return;
-    
-    setIsLoading(true);
-    try {
-      const data = await studyService.getSession(method, collectionId);
-      setStudyData(data);
-    } catch (error: any) {
-      console.error(`[StudyRoom] GET failed:`, error);
-      if (error.response?.status === 404) {
-        toast.info("No study session found for this collection/method.");
-        setStudyData(null);
-      } else {
-        toast.error("Failed to load study data.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // ── Fetch existing data for the selected method + collection ──────────────
+  const fetchStudyData = useCallback(
+    async (method: StudyMethodId, collectionId: string) => {
+      if (!SUPPORTED_METHODS.includes(method)) return;
 
+      setIsLoading(true);
+      setStudyData(null);
+      try {
+        const data = await methodServiceMap[method].fetch(collectionId);
+        setStudyData(data ?? null);
+        console.log(`[StudyRoom] GET ${method} success`, data);
+      } catch (error: any) {
+        console.error(`[StudyRoom] GET ${method} failed:`, error);
+        if (error.response?.status === 404) {
+          // Not yet generated — show the "Initialize" prompt (studyData stays null)
+          toast.info(
+            "This study technique is not yet available for this collection."
+          );
+        } else {
+          toast.error(
+            error.response?.data?.message || "Failed to load study data."
+          );
+        }
+        setStudyData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // ── POST to generate, then GET to show ────────────────────────────────────
   const handleInitialize = async () => {
     if (!activeMethod || !activeCollection) return;
-    
+
+    const collectionId = activeCollection.collection_id;
+    const svc = methodServiceMap[activeMethod];
+
     setIsInitializing(true);
     try {
-      await studyService.generateSession(activeMethod, activeCollection.collection_id);
+      console.log(
+        `[StudyRoom] Generating ${activeMethod} for collection ${collectionId}…`
+      );
+      await svc.generate(collectionId);
       toast.success("Study session initialized!");
-      await fetchStudyData(activeMethod, activeCollection.collection_id);
+
+      // Immediately fetch the freshly generated data
+      const data = await svc.fetch(collectionId);
+      setStudyData(data ?? null);
+      console.log(`[StudyRoom] POST+GET ${activeMethod} success`, data);
     } catch (error: any) {
+      console.error(`[StudyRoom] Initialize ${activeMethod} failed:`, error);
       if (error.response?.status === 404) {
-        toast.error("Study technique endpoint not ready. Please contact support.");
+        toast.error(
+          "This study technique is not yet available for this collection."
+        );
       } else {
-        const msg = error.response?.data?.message || "Failed to initialize technique.";
-        toast.error(msg);
+        toast.error(
+          error.response?.data?.message || "Failed to initialize technique."
+        );
       }
     } finally {
       setIsInitializing(false);
     }
   };
 
-  // Auto-fetch when selection changes
+  // ── Auto-fetch when collection or method changes ──────────────────────────
   useEffect(() => {
     if (activeCollection && activeMethod) {
       fetchStudyData(activeMethod, activeCollection.collection_id);
@@ -78,33 +140,42 @@ export default function StudyRoom() {
     }
   }, [activeCollection, activeMethod, fetchStudyData]);
 
-  // UI Flow logic
+  // ── Clear study data when user picks a different collection ───────────────
+  const handleCollectionSelect = (collection: Collection) => {
+    setStudyData(null);
+    setActiveMethod(null);
+    setActiveCollection(collection);
+  };
+
+  // ── UI Flow ───────────────────────────────────────────────────────────────
   if (!activeCollection) {
-    return <BookSelector onSelect={setActiveCollection} />;
+    return <BookSelector onSelect={handleCollectionSelect} />;
   }
 
   if (!activeMethod) {
     return (
-        <div className="relative">
-            <Button 
-                variant="ghost" 
-                onClick={() => setActiveCollection(null)}
-                className="absolute top-8 left-8 z-50 gap-2"
-            >
-                <ArrowLeft /> Change Collection
-            </Button>
-            <StudyMethodSelector onSelect={setActiveMethod} />
-        </div>
+      <div className="relative">
+        <Button
+          variant="ghost"
+          onClick={() => setActiveCollection(null)}
+          className="absolute top-8 left-8 z-50 gap-2"
+        >
+          <ArrowLeft /> Change Collection
+        </Button>
+        <StudyMethodSelector onSelect={setActiveMethod} />
+      </div>
     );
   }
 
-  // Active Session Layout
+  // ── Active Session Layout ─────────────────────────────────────────────────
   const renderMethodContent = () => {
     if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
           <CircleNotch className="w-10 h-10 animate-spin text-primary" />
-          <p className="text-muted-foreground font-medium">Retrieving cognitive assets...</p>
+          <p className="text-muted-foreground font-medium">
+            Retrieving cognitive assets…
+          </p>
         </div>
       );
     }
@@ -118,19 +189,31 @@ export default function StudyRoom() {
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Technique Not Initialized</h2>
             <p className="text-muted-foreground">
-              You haven't generated study assets for <strong>{activeMethod.replace('_', ' ')}</strong> using this collection yet.
+              You haven't generated study assets for{" "}
+              <strong>{activeMethod.replace("_", " ")}</strong> using{" "}
+              <strong>{activeCollection.title}</strong> yet.
             </p>
           </div>
-          <Button 
-            size="lg" 
-            onClick={handleInitialize} 
+          <Button
+            size="lg"
+            onClick={handleInitialize}
             disabled={isInitializing}
             className="rounded-xl px-8 h-12 gap-2 font-bold shadow-lg"
           >
-            {isInitializing ? <CircleNotch className="w-4 h-4 animate-spin" /> : <Sparkle className="w-4 h-4" />}
-            Initialize {activeMethod.replace('_', ' ')}
+            {isInitializing ? (
+              <CircleNotch className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkle className="w-4 h-4" />
+            )}
+            {isInitializing
+              ? "Generating…"
+              : `Initialize ${activeMethod.replace("_", " ")}`}
           </Button>
-          <Button variant="ghost" onClick={() => setActiveMethod(null)} className="text-muted-foreground">
+          <Button
+            variant="ghost"
+            onClick={() => setActiveMethod(null)}
+            className="text-muted-foreground"
+          >
             Choose different method
           </Button>
         </div>
@@ -142,29 +225,34 @@ export default function StudyRoom() {
       courseId: courseId || "demo-course",
       bookFilename: activeCollection.title,
       collectionId: activeCollection.collection_id,
-      studyData: studyData, // Real data from GET
-      onBack: () => setActiveMethod(null)
+      studyData,
+      onBack: () => setActiveMethod(null),
     };
 
     switch (activeMethod) {
-      case 'pomodoro':
+      case "pomodoro":
         return <PomodoroMethod {...commonProps} />;
-      case 'feynman':
+      case "feynman":
         return <FeynmanMethod {...commonProps} />;
-      case 'sq3r':
+      case "sq3r":
         return <SQ3RMethod {...commonProps} />;
-      case 'leitner':
+      case "leitner":
         return <LeitnerSystem {...commonProps} />;
-      case 'active_recall':
+      case "active_recall":
         return <ActiveRecall {...commonProps} />;
       default:
         return (
-            <div className="p-20 text-center space-y-4">
-                <Warning className="w-12 h-12 mx-auto text-amber-500" />
-                <h3 className="text-xl font-bold">Technique Integration Pending</h3>
-                <p className="text-muted-foreground">The <strong>{activeMethod}</strong> method is not yet fully integrated with the production API.</p>
-                <Button onClick={() => setActiveMethod(null)}>Back to Selection</Button>
-            </div>
+          <div className="p-20 text-center space-y-4">
+            <Warning className="w-12 h-12 mx-auto text-amber-500" />
+            <h3 className="text-xl font-bold">Technique Integration Pending</h3>
+            <p className="text-muted-foreground">
+              The <strong>{activeMethod}</strong> method is not yet fully
+              integrated with the production API.
+            </p>
+            <Button onClick={() => setActiveMethod(null)}>
+              Back to Selection
+            </Button>
+          </div>
         );
     }
   };
