@@ -26,11 +26,10 @@ export const chatService = {
     getSessions: async (): Promise<ChatSession[]> => {
         const url = '/api/chat/sessions';
         console.log(`[Chat API GET] ${url}`);
-        
+
         try {
             const response = await apiClient.get(url);
             console.log(`[Chat API SUCCESS] GET ${url}`, response.data);
-            // Support both {data: [...]} and direct array responses
             return response.data.data || (Array.isArray(response.data) ? response.data : []);
         } catch (error: any) {
             console.error(`[Chat API ERROR] GET ${url}`, {
@@ -48,7 +47,7 @@ export const chatService = {
     getSessionMessages: async (sessionId: string): Promise<ChatMessage[]> => {
         const url = `/api/chat/sessions/${sessionId}/messages`;
         console.log(`[Chat API GET] ${url}`);
-        
+
         try {
             const response = await apiClient.get(url);
             console.log(`[Chat API SUCCESS] GET ${url}`, response.data);
@@ -65,21 +64,23 @@ export const chatService = {
 
     /**
      * Sends a message to Questy AI.
+     * collection_id is optional — omit it for a general (non-collection-bound) session.
      */
-    ask: async (params: { question: string; session_id: string; collection_id: string }): Promise<AskResponse> => {
+    ask: async (params: { question: string; session_id: string; collection_id?: string }): Promise<AskResponse> => {
         const url = '/api/chat/ask';
-        
-        // Construct the exact payload required by the backend
-        const payload = {
-            collection_id: params.collection_id,
+
+        const payload: Record<string, any> = {
             question: params.question,
-            session_id: params.session_id
+            session_id: params.session_id,
         };
+        if (params.collection_id) {
+            payload.collection_id = params.collection_id;
+        }
 
         console.group(`[Chat API POST] ${url}`);
-        console.log("Payload:", payload);
+        console.log('Payload:', payload);
         console.groupEnd();
-        
+
         try {
             const response = await apiClient.post(url, payload);
             console.log(`[Chat API SUCCESS] POST ${url}`, response.data);
@@ -95,14 +96,18 @@ export const chatService = {
     },
 
     /**
-     * Creates a new chat session for a collection.
+     * Creates a new chat session.
+     * collection_id is optional — if omitted the session is a general conversation.
      */
-    createSession: async (collection_id: string): Promise<ChatSession> => {
+    createSession: async (collection_id?: string): Promise<ChatSession> => {
         const url = '/api/chat/sessions';
-        console.log(`[Chat API POST] ${url}`, { collection_id });
-        
+        const payload: Record<string, any> = {};
+        if (collection_id) payload.collection_id = collection_id;
+
+        console.log(`[Chat API POST] ${url}`, payload);
+
         try {
-            const response = await apiClient.post(url, { collection_id });
+            const response = await apiClient.post(url, payload);
             console.log(`[Chat API SUCCESS] POST ${url}`, response.data);
             return response.data.data || response.data;
         } catch (error: any) {
@@ -117,7 +122,7 @@ export const chatService = {
     deleteSession: async (sessionId: string): Promise<void> => {
         const url = `/api/chat/sessions/${sessionId}`;
         console.log(`[Chat API DELETE] ${url}`);
-        
+
         try {
             await apiClient.delete(url);
             console.log(`[Chat API SUCCESS] DELETE ${url}`);

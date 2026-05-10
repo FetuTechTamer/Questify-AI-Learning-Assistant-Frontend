@@ -23,6 +23,10 @@ const SUPPORTED_METHODS: StudyMethodId[] = [
   "active_recall",
 ];
 
+// Methods that are self-contained (e.g. a timer) and can render
+// even when no backend session data exists yet.
+const SELF_STARTING_METHODS: StudyMethodId[] = ["pomodoro"];
+
 // Maps a StudyMethodId to the matching named GET and POST service methods
 const methodServiceMap: Record<
   StudyMethodId,
@@ -79,16 +83,23 @@ export default function StudyRoom() {
       } catch (error: any) {
         console.error(`[StudyRoom] GET ${method} failed:`, error);
         if (error.response?.status === 404) {
-          // Not yet generated — show the "Initialize" prompt (studyData stays null)
-          toast.info(
-            "This study technique is not yet available for this collection."
-          );
+          if (SELF_STARTING_METHODS.includes(method as StudyMethodId)) {
+            // Self-starting methods (e.g. Pomodoro timer) work without prior data.
+            // Set an empty object so the component still renders.
+            setStudyData({});
+          } else {
+            // Other methods need generated content — show the "Initialize" prompt.
+            toast.info(
+              "No study session found yet. Click Initialize to generate content."
+            );
+            setStudyData(null);
+          }
         } else {
           toast.error(
             error.response?.data?.message || "Failed to load study data."
           );
+          setStudyData(null);
         }
-        setStudyData(null);
       } finally {
         setIsLoading(false);
       }
@@ -180,7 +191,10 @@ export default function StudyRoom() {
       );
     }
 
-    if (!studyData) {
+    // Self-starting methods always render even if studyData is empty
+    const needsInit = !studyData && !SELF_STARTING_METHODS.includes(activeMethod);
+
+    if (needsInit) {
       return (
         <div className="flex flex-col items-center justify-center h-[60vh] max-w-xl mx-auto text-center gap-6 animate-in fade-in zoom-in duration-500">
           <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center text-primary/40">
