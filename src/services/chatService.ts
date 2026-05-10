@@ -79,26 +79,57 @@ export const chatService = {
      *
      * Omit session_id (or pass undefined) to let the backend create a new session.
      */
-    ask: async (params: { question: string; session_id?: string }): Promise<AskResponse> => {
-        const url = '/api/chat/ask';
-        const payload: Record<string, any> = { question: params.question };
-        if (params.session_id) payload.session_id = params.session_id;
+    ask: async (params: { question: string; session_id: string }): Promise<AskResponse> => {
+        const url = '/api/chat/ask/';
+        
+        const payload = { 
+            question: params.question,
+            session_id: params.session_id
+        };
 
-        console.group(`[Chat] POST ${url}`);
-        console.log('Payload:', payload);
+        console.group(`[Chat Service] POST ${url}`);
+        console.log('Sending Payload:', JSON.stringify(payload, null, 2));
         console.groupEnd();
 
         try {
             const res = await apiClient.post(url, payload);
             const data = unwrap(res);
-            console.log(`[Chat] POST ${url} →`, data);
+            console.log(`[Chat Service] SUCCESS: ${url}`, data);
             return data as AskResponse;
         } catch (error: any) {
-            console.error(`[Chat] POST ${url} failed`, {
+            const errorPayload = {
                 status: error.response?.status,
-                data: error.response?.data,
-                message: error.message,
-            });
+                statusText: error.response?.statusText,
+                errorData: error.response?.data,
+                errorMessage: error.message,
+                requestPayload: payload
+            };
+            console.error(`[Chat Service] CRITICAL ERROR: ${url}`, errorPayload);
+            throw error;
+        }
+    },
+
+    /**
+     * POST /api/chat/session
+     * Creates a new chat session with a title.
+     */
+    createSession: async (title: string): Promise<ChatSession> => {
+        const url = '/api/chat/session/';
+        const payload = { title };
+        console.log(`[Chat Service] ATTEMPTING: POST ${url}`, payload);
+        try {
+            const res = await apiClient.post(url, payload);
+            const data = unwrap(res);
+            console.log(`[Chat Service] SUCCESS: ${url}`, data);
+            return data as ChatSession;
+        } catch (error: any) {
+            const errorPayload = {
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                errorData: error.response?.data,
+                errorMessage: error.message,
+            };
+            console.error(`[Chat Service] CRITICAL ERROR: ${url}`, errorPayload);
             throw error;
         }
     },

@@ -178,17 +178,13 @@ const QuestyChat = () => {
 
   /**
    * Sends the user's message.
-   *
-   * Flow:
-   *  1. If no session is active → omit session_id from the request body.
-   *     The backend creates a new session and returns session_id in the response.
-   *  2. If a session is already active → include session_id to continue it.
-   *  3. Store the returned session_id, refresh the sidebar, and display the reply.
    */
   const handleSend = async () => {
     if (!inputValue.trim() || isTyping) return;
 
     const question = inputValue.trim();
+    console.log('[QuestyChat] handleSend triggered. Question:', question);
+
     setInputValue('');
     setIsTyping(true);
 
@@ -201,17 +197,29 @@ const QuestyChat = () => {
     setMessages(prev => [...prev, optimisticUserMsg]);
 
     try {
+      let sessionId = activeSessionId;
+
+      // If no session exists, create one first via the dedicated endpoint
+      if (!sessionId) {
+        // Derive a title from the user's first message (max 30 chars)
+        const sessionTitle = question.length > 30 ? question.substring(0, 27) + '...' : question;
+        console.log(`[QuestyChat] No active session. Creating one via POST /api/chat/session with title: "${sessionTitle}"...`);
+        
+        const newSession = await chatService.createSession(sessionTitle);
+        sessionId = newSession.session_id;
+        setActiveSessionId(sessionId);
+        console.log('[QuestyChat] Session created successfully:', sessionId);
+        // Refresh sidebar so the new session appears
+        fetchSessions(sessionId);
+      }
+
+      console.log('[QuestyChat] Calling chatService.ask with session_id:', sessionId);
       const response = await chatService.ask({
         question,
-        session_id: activeSessionId ?? undefined,
+        session_id: sessionId,
       });
 
-      // If a new session was created, store it and refresh the sidebar
-      if (response.session_id && response.session_id !== activeSessionId) {
-        console.log('[Chat] Backend created new session:', response.session_id);
-        setActiveSessionId(response.session_id);
-        fetchSessions(response.session_id); // refresh sidebar, keep this session selected
-      }
+      console.log('[QuestyChat] chatService.ask SUCCESS. Response:', response);
 
       // Append the assistant reply
       const assistantMsg: ChatMessage = {
@@ -221,22 +229,25 @@ const QuestyChat = () => {
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (error: any) {
-      console.error('[Chat] ask() failed:', error);
-      const errorText =
-        error.response?.data?.message || 'Failed to get a response. Please try again.';
-      toast.error(errorText);
+      console.error('[QuestyChat] CRITICAL FAILURE:', error);
+      
+      const errorDetail = error.response?.data || error.message;
+      const errorStatus = error.response?.status || 'Unknown';
+      
+      toast.error(`Error ${errorStatus}: Check chat bubble for details.`);
 
-      // Show an in-chat error bubble
+      // Show the FULL RAW ERROR in the chat bubble so you can't miss it
       setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: `Sorry, I encountered an error: ${errorText}`,
+          content: `🚨 SYSTEM ERROR (${errorStatus})\n\nRaw Response:\n\`\`\`json\n${JSON.stringify(errorDetail, null, 2)}\n\`\`\`\n\nPlease check if the endpoint exists or if the payload is correct.`,
           created_at: new Date().toISOString(),
         },
       ]);
     } finally {
       setIsTyping(false);
+      console.log('[QuestyChat] handleSend finished.');
     }
   };
 

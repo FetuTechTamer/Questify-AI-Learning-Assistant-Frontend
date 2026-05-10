@@ -4,8 +4,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://questiai-43b7
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  // Removed hardcoded 'Content-Type': 'application/json' to allow Axios to automatically
-  // detect and set the correct Content-Type for both JSON and FormData (multipart) requests.
+  timeout: 120000, // 120 seconds for long AI tasks
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 apiClient.interceptors.request.use(
