@@ -331,7 +331,7 @@ export default function Notes() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                       {notes.map((note) => (
                         <Card
-                          key={note.id || note.note_id}
+                          key={note.note_id || note.id || Math.random().toString()}
                           className="group relative overflow-hidden p-6 transition-all cursor-pointer border-primary/10 hover:border-primary/30"
                           onClick={() => handleOpenNote(note)}
                         >
@@ -353,7 +353,7 @@ export default function Notes() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 rounded-full hover:bg-primary/10"
-                                  onClick={(e) => { e.stopPropagation(); handleShare(note.id || note.note_id); }}
+                                  onClick={(e) => { e.stopPropagation(); handleShare(note.note_id || note.id); }}
                                 >
                                   <ShareNetwork className="w-4 h-4" />
                                 </Button>
@@ -361,7 +361,7 @@ export default function Notes() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={(e) => handleDeleteNote(e, note.id || note.note_id)}
+                                  onClick={(e) => handleDeleteNote(e, note.note_id || note.id)}
                                 >
                                   <Trash className="w-4 h-4" />
                                 </Button>
@@ -373,25 +373,23 @@ export default function Notes() {
                                   {note.created_at ? new Date(note.created_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Recently'}
                                   <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                                   <span className="text-primary/80">
-                                    {collections.find(c => c.collection_id === (note.collection_id || selectedCollectionId))?.title || 'Unknown Collection'}
+                                    {collections.find(c => c.collection_id === selectedCollectionId)?.title || 'Active Collection'}
                                   </span>
                                 </p>
-                                <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">
-                                  {collections.find(c => c.collection_id === (note.collection_id || selectedCollectionId))?.title || note.title || 'Untitled Note'}
+                                <h3 className="text-lg font-bold leading-tight group-hover:text-primary transition-colors truncate">
+                                  {note.title || `Note ${new Date(note.created_at).toLocaleDateString()}`}
                                 </h3>
                               </div>
 
-                              {/* Simplified Content Preview */}
                               <div className="text-sm">
                                 <p className="text-muted-foreground text-[13px] line-clamp-3 leading-relaxed italic">
-                                  {note.summary || note.description ||
-                                    (Array.isArray(note.sections) && note.sections[0]?.bullets?.[0]
-                                      ? note.sections[0].bullets[0]
-                                      : `This ${note.method || selectedMethodId} note contains structured learning data. Click to open in AI Studio.`)}
+                                  {typeof note.content === 'string' 
+                                    ? note.content 
+                                    : (note.summary || note.description || `Structured ${selectedMethodId} note for your study session.`)}
                                 </p>
                               </div>
                             </div>
-                            <div className="pt-4 border-t flex items-center justify-between text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="pt-4 border-t flex items-center justify-between text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-auto">
                               Open in Studio
                               <ArrowRight className="w-4 h-4" />
                             </div>

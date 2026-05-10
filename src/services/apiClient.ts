@@ -28,6 +28,19 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Verbose logging for debugging production errors
+    console.group(`🚨 API ERROR: ${error.config?.method?.toUpperCase()} ${error.config?.url}`);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+      console.error('Headers:', error.response.headers);
+    } else if (error.request) {
+      console.error('No Response Received. Request:', error.request);
+    } else {
+      console.error('Error Message:', error.message);
+    }
+    console.groupEnd();
+
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('access_token');
       window.location.href = '/auth';

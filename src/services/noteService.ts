@@ -41,16 +41,14 @@ export const noteService = {
   getNotes: async (method: string, collectionId: string): Promise<any[]> => {
     const slug = mapMethodSlug(method);
     const url = `/api/notes/${slug}/${collectionId}`;
-
     try {
       const response = await apiClient.get(url);
-      const data = response.data.data || response.data || [];
+      // Backend spec: { success: true, data: [ ... ] }
+      const data = response.data.data || response.data;
       
-      // Return as array. If backend returns single object, wrap it.
-      if (data && !Array.isArray(data)) {
-        return [data];
-      }
-      return Array.isArray(data) ? data : [];
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object') return [data];
+      return [];
     } catch (error: any) {
       console.error(`[API GET] Failed: ${url}`, error);
       throw error;

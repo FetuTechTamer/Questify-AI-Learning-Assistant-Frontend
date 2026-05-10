@@ -71,47 +71,18 @@ const QuestyChat = () => {
 
   // ── State ──────────────────────────────────────────────────────────────────
 
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isDeletingSession, setIsDeletingSession] = useState<string | null>(null);
   const [mobileHistoryOpen, setMobileHistoryOpen] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Data fetchers ──────────────────────────────────────────────────────────
-
-  /** Loads the session list. Auto-selects the most-recently-updated session. */
-  const fetchSessions = async (selectSessionId?: string) => {
-    setIsLoadingSessions(true);
-    try {
-      const data = await chatService.getSessions();
-      // Sort newest-first by created_at
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      setSessions(sorted);
-
-      if (selectSessionId) {
-        // Prefer the session we just created / want to highlight
-        setActiveSessionId(selectSessionId);
-      } else if (sorted.length > 0 && !activeSessionId) {
-        // Auto-select the most recent session on first load
-        setActiveSessionId(sorted[0].session_id);
-      }
-    } catch (error) {
-      console.error('[Chat] Failed to load sessions:', error);
-      toast.error('Could not load your chat history.');
-    } finally {
-      setIsLoadingSessions(false);
-    }
-  };
 
   /** Loads messages for a given session. */
   const fetchMessages = async (sessionId: string) => {
@@ -129,11 +100,6 @@ const QuestyChat = () => {
   };
 
   // ── Effects ────────────────────────────────────────────────────────────────
-
-  // Load sessions on mount
-  useEffect(() => {
-    fetchSessions();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load messages whenever the selected session changes
   useEffect(() => {
@@ -158,22 +124,6 @@ const QuestyChat = () => {
     setInputValue('');
     setMobileHistoryOpen(false);
     setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
-  /** Deletes a session from the backend and removes it from the sidebar. */
-  const deleteChat = async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsDeletingSession(sessionId);
-    try {
-      await chatService.deleteSession(sessionId);
-      setSessions(prev => prev.filter(s => s.session_id !== sessionId));
-      if (activeSessionId === sessionId) createNewChat();
-      toast.success('Session deleted.');
-    } catch {
-      toast.error('Failed to delete session.');
-    } finally {
-      setIsDeletingSession(null);
-    }
   };
 
   /**
@@ -203,8 +153,8 @@ const QuestyChat = () => {
       if (!sessionId) {
         // Derive a title from the user's first message (max 30 chars)
         const sessionTitle = question.length > 30 ? question.substring(0, 27) + '...' : question;
-        console.log(`[QuestyChat] No active session. Creating one via POST /api/chat/session with title: "${sessionTitle}"...`);
-        
+        console.log(`[QuestyChat] No active session. Creating one via POST  with title: "${sessionTitle}"...`);
+
         const newSession = await chatService.createSession(sessionTitle);
         sessionId = newSession.session_id;
         setActiveSessionId(sessionId);
@@ -230,10 +180,10 @@ const QuestyChat = () => {
       setMessages(prev => [...prev, assistantMsg]);
     } catch (error: any) {
       console.error('[QuestyChat] CRITICAL FAILURE:', error);
-      
+
       const errorDetail = error.response?.data || error.message;
       const errorStatus = error.response?.status || 'Unknown';
-      
+
       toast.error(`Error ${errorStatus}: Check chat bubble for details.`);
 
       // Show the FULL RAW ERROR in the chat bubble so you can't miss it
@@ -253,115 +203,21 @@ const QuestyChat = () => {
 
   // ── Sidebar ────────────────────────────────────────────────────────────────
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full gap-4 overflow-hidden">
-      <Button
-        onClick={createNewChat}
-        className="w-full h-11 bg-primary text-primary-foreground hover:opacity-90 rounded-xl shadow-lg shadow-primary/20 font-bold gap-2"
-      >
-        <Plus className="w-4 h-4" weight="bold" />
-        New Session
-      </Button>
-
-      <Card className="flex-1 rounded-xl border-none shadow-sm flex flex-col overflow-hidden">
-        <CardHeader className="p-3 border-b bg-muted/30">
-          <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Clock className="w-3 h-3" />
-            Recent Synapses
-          </CardTitle>
-        </CardHeader>
-        <ScrollArea className="flex-1 w-full">
-          <div className="p-2 space-y-1">
-            {isLoadingSessions ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-3 opacity-50">
-                <CircleNotch className="w-6 h-6 animate-spin text-primary" />
-                <span className="text-xs font-bold uppercase tracking-widest">Loading...</span>
-              </div>
-            ) : sessions.length === 0 ? (
-              <div className="p-6 text-center space-y-2">
-                <ChatCircle className="w-8 h-8 mx-auto opacity-10" />
-                <p className="text-xs text-muted-foreground">No recent chats.</p>
-              </div>
-            ) : (
-              sessions.map(session => (
-                <div
-                  key={session.session_id}
-                  onClick={() => {
-                    setActiveSessionId(session.session_id);
-                    setMobileHistoryOpen(false);
-                  }}
-                  className={cn(
-                    'group p-2.5 rounded-xl cursor-pointer transition-all duration-200 relative',
-                    activeSessionId === session.session_id
-                      ? 'bg-primary/10 text-primary'
-                      : 'hover:bg-muted'
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-0.5">
-                    <p className="font-bold text-sm truncate pr-6">
-                      {session.title || 'Untitled Session'}
-                    </p>
-                    <button
-                      onClick={e => deleteChat(session.session_id, e)}
-                      disabled={isDeletingSession === session.session_id}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
-                    >
-                      {isDeletingSession === session.session_id ? (
-                        <CircleNotch className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Trash className="w-3 h-3" />
-                      )}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground opacity-60">
-                    <Clock className="w-3 h-3" />
-                    {session.created_at
-                      ? new Date(session.created_at).toLocaleDateString()
-                      : 'Today'}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </ScrollArea>
-      </Card>
-    </div>
-  );
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <DashboardLayout title="Questy AI Partner">
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-110px)] gap-4 lg:gap-6 p-3 lg:p-6 overflow-hidden">
-
-        {/* ── Sidebar (desktop) ── */}
-        {!isMobile && (
-          <div className="w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4 overflow-hidden">
-            <SidebarContent />
-          </div>
-        )}
-
-        {/* ── Chat panel ── */}
+      <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-110px)] max-w-4xl mx-auto w-full gap-4 lg:gap-6 p-3 lg:p-6 overflow-hidden">
         <Card className="flex-1 flex flex-col rounded-xl border-none relative glass-card overflow-hidden">
-
           {/* Mobile top bar */}
           {isMobile && (
             <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-xl sticky top-0 z-10">
-              <Sheet open={mobileHistoryOpen} onOpenChange={setMobileHistoryOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-xl border-dashed gap-2 font-bold px-3"
-                  >
-                    <List className="w-4 h-4" />
-                    Sessions
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="p-4 w-[85%] border-0 overflow-y-auto">
-                  <SidebarContent />
-                </SheetContent>
-              </Sheet>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Robot className="w-5 h-5 text-primary" weight="fill" />
+                </div>
+                <h2 className="font-bold text-sm">Questy AI</h2>
+              </div>
               <Button
                 onClick={createNewChat}
                 variant="ghost"
@@ -466,9 +322,9 @@ const QuestyChat = () => {
                             >
                               {message.created_at
                                 ? new Date(message.created_at).toLocaleTimeString([], {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                  })
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
                                 : 'Just now'}
                             </span>
                           </div>

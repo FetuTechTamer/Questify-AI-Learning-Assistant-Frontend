@@ -29,28 +29,6 @@ const unwrap = (res: any): any => res.data?.data ?? res.data;
 export const chatService = {
 
     /**
-     * GET /api/chat/sessions
-     * Returns: { data: [{ session_id, title, created_at }] }
-     */
-    getSessions: async (): Promise<ChatSession[]> => {
-        const url = '/api/chat/sessions';
-        console.log(`[Chat] GET ${url}`);
-        try {
-            const res = await apiClient.get(url);
-            const data = unwrap(res);
-            console.log(`[Chat] GET ${url} →`, data);
-            return Array.isArray(data) ? data : [];
-        } catch (error: any) {
-            console.error(`[Chat] GET ${url} failed`, {
-                status: error.response?.status,
-                data: error.response?.data,
-                message: error.message,
-            });
-            throw error;
-        }
-    },
-
-    /**
      * GET /api/chat/sessions/{session_id}/messages
      * Returns: { data: [{ message_id, role, content, created_at }] }
      */
@@ -80,9 +58,9 @@ export const chatService = {
      * Omit session_id (or pass undefined) to let the backend create a new session.
      */
     ask: async (params: { question: string; session_id: string }): Promise<AskResponse> => {
-        const url = '/api/chat/ask/';
-        
-        const payload = { 
+        const url = '/api/chat/ask';
+
+        const payload = {
             question: params.question,
             session_id: params.session_id
         };
@@ -114,8 +92,12 @@ export const chatService = {
      * Creates a new chat session with a title.
      */
     createSession: async (title: string): Promise<ChatSession> => {
-        const url = '/api/chat/session/';
-        const payload = { title };
+        const url = '/api/chat/session';
+        // TEMP: Hardcoded collection ID to prevent backend 500 until they make it truly optional
+        const payload = {
+            title,
+            collection_id: "b529d8e6-e105-4da0-af8a-72e99de26df7"
+        };
         console.log(`[Chat Service] ATTEMPTING: POST ${url}`, payload);
         try {
             const res = await apiClient.post(url, payload);
@@ -134,22 +116,22 @@ export const chatService = {
         }
     },
 
-    /**
-     * DELETE /api/chat/sessions/{session_id}
-     */
-    deleteSession: async (sessionId: string): Promise<void> => {
-        const url = `/api/chat/sessions/${sessionId}`;
-        console.log(`[Chat] DELETE ${url}`);
-        try {
-            await apiClient.delete(url);
-            console.log(`[Chat] DELETE ${url} → ok`);
-        } catch (error: any) {
-            console.error(`[Chat] DELETE ${url} failed`, {
-                status: error.response?.status,
-                data: error.response?.data,
-                message: error.message,
-            });
-            throw error;
-        }
-    },
+    // /**
+    //  * DELETE /api/chat/sessions/{session_id}
+    //  */
+    // deleteSession: async (sessionId: string): Promise<void> => {
+    //     const url = `/api/chat/sessions/${sessionId}`;
+    //     console.log(`[Chat] DELETE ${url}`);
+    //     try {
+    //         await apiClient.delete(url);
+    //         console.log(`[Chat] DELETE ${url} → ok`);
+    //     } catch (error: any) {
+    //         console.error(`[Chat] DELETE ${url} failed`, {
+    //             status: error.response?.status,
+    //             data: error.response?.data,
+    //             message: error.message,
+    //         });
+    //         throw error;
+    //     }
+    // },
 };

@@ -46,13 +46,15 @@ export interface GradedItem {
 export interface SubmitResponse {
   submission_id?: string;
   exam_id: string;
+  exam_title?: string;
   total_score: number;
   max_score: number;
   status: string;
   message?: string;
   feedback?: string;
-  graded_items: GradedItem[];
+  graded_items?: GradedItem[];
   details?: any;
+  created_at?: string;
 }
 
 
@@ -133,7 +135,7 @@ export const api = {
   },
 
   getExamHistory: async (): Promise<SubmitResponse[]> => {
-    const url = '/api/exam/history';
+    const url = '/api/exam/results/';
     try {
       const response = await apiClient.get(url);
       console.log('--- FETCH EXAM HISTORY SUCCESS ---', response.data);
